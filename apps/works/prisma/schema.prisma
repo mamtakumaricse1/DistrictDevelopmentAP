@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("WORKS_DATABASE_URL")
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CLOSED
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  DELAYED
+  STALLED
+  COMPLETED
+}
+
+model Project {
+  id                   String             @id @default(uuid()) @db.Uuid
+  code                 String             @unique @db.VarChar(64)
+  name                 String             @db.VarChar(300)
+  description          String?
+  districtId           String             @map("district_id") @db.Uuid
+  departmentId         String             @map("department_id") @db.Uuid
+  implementingAgencyId String?            @map("implementing_agency_id") @db.Uuid
+  executingAgencyId    String?            @map("executing_agency_id") @db.Uuid
+  financialYear        Int                @map("financial_year")
+  sanctionedAmount     Decimal?           @map("sanctioned_amount") @db.Decimal(14, 2)
+  status               ProjectStatus      @default(DRAFT)
+  startDate            DateTime?          @map("start_date") @db.Date
+  endDate              DateTime?          @map("end_date") @db.Date
+  locationText         String?            @map("location_text") @db.VarChar(300)
+  isActive             Boolean            @default(true) @map("is_active")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+  createdById          String?            @map("created_by_id") @db.Uuid
+  updatedById          String?            @map("updated_by_id") @db.Uuid
+  progress             ProjectProgress[]
+  documents            ProjectDocument[]
+
+  @@index([districtId, departmentId])
+  @@index([status])
+  @@map("projects")
+}
+
+model ProjectSequence {
+  districtId   String @map("district_id") @db.Uuid
+  departmentId String @map("department_id") @db.Uuid
+  year         Int
+  lastValue    Int    @map("last_value")
+
+  @@id([districtId, departmentId, year])
+  @@map("project_sequences")
+}
+
+model ProjectProgress {
+  id               String         @id @default(uuid()) @db.Uuid
+  projectId        String         @map("project_id") @db.Uuid
+  project          Project        @relation(fields: [projectId], references: [id])
+  version          Int
+  periodYm         String         @map("period_ym") @db.VarChar(7)
+  physicalPercent  Decimal        @map("physical_percent") @db.Decimal(5, 2)
+  financialAmount  Decimal?       @map("financial_amount") @db.Decimal(14, 2)
+  status           ProgressStatus
+  remarks          String?
+  createdAt        DateTime       @default(now()) @map("created_at")
+  createdById      String         @map("created_by_id") @db.Uuid
+  documents        ProjectDocument[]
+
+  @@unique([projectId, version])
+  @@index([projectId, periodYm])
+  @@map("project_progress")
+}
+
+model ProjectDocument {
+  id           String           @id @default(uuid()) @db.Uuid
+  projectId    String           @map("project_id") @db.Uuid
+  project      Project          @relation(fields: [projectId], references: [id])
+  progressId   String?          @map("progress_id") @db.Uuid
+  progress     ProjectProgress? @relation(fields: [progressId], references: [id])
+  originalName String           @map("original_name") @db.VarChar(255)
+  mimeType     String           @map("mime_type") @db.VarChar(120)
+  byteSize     Int              @map("byte_size")
+  storageKey   String           @map("storage_key") @db.VarChar(500)
+  isActive     Boolean          @default(true) @map("is_active")
+  uploadedAt   DateTime         @default(now()) @map("uploaded_at")
+  uploadedById String           @map("uploaded_by_id") @db.Uuid
+
+  @@index([projectId])
+  @@map("project_documents")
+}

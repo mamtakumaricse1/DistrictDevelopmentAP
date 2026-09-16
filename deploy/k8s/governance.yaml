@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: governance
+  namespace: ddwmd
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: governance
+  template:
+    metadata:
+      labels:
+        app: governance
+    spec:
+      terminationGracePeriodSeconds: 20
+      containers:
+        - name: governance
+          image: ddwmd/governance:0.1.0
+          ports:
+            - containerPort: 3004
+          env:
+            - name: GOVERNANCE_PORT
+              value: "3004"
+          envFrom:
+            - configMapRef:
+                name: ddwmd-config
+            - secretRef:
+                name: ddwmd-secrets
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3004
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: 3004
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: governance
+  namespace: ddwmd
+spec:
+  selector:
+    app: governance
+  ports:
+    - port: 3004
+      targetPort: 3004

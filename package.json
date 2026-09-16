@@ -1,0 +1,40 @@
+{
+  "name": "district-works-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "description": "District Development Works Monitoring Dashboard — Gateway, Identity, Organization, and Works microservices",
+  "workspaces": [
+    "apps/web",
+    "apps/gateway",
+    "apps/identity",
+    "apps/organization",
+    "apps/works",
+    "apps/governance",
+    "apps/notify",
+    "packages/common"
+  ],
+  "scripts": {
+    "dev:identity": "npm run build -w @ddwmd/common && npm run start:dev -w @ddwmd/identity",
+    "dev:organization": "npm run build -w @ddwmd/common && npm run start:dev -w @ddwmd/organization",
+    "dev:works": "npm run build -w @ddwmd/common && npm run start:dev -w @ddwmd/works",
+    "dev:governance": "npm run build -w @ddwmd/common && npm run start:dev -w @ddwmd/governance",
+    "dev:notify": "npm run build -w @ddwmd/common && npm run start:dev -w @ddwmd/notify",
+    "dev:gateway": "npm run start:dev -w @ddwmd/gateway",
+    "dev:services": "node scripts/dev-services.cjs",
+    "dev:web": "npm run dev -w @ddwmd/web",
+    "lint": "npm run lint -w @ddwmd/common && npm run lint -w @ddwmd/identity && npm run lint -w @ddwmd/organization && npm run lint -w @ddwmd/works && npm run lint -w @ddwmd/governance && npm run lint -w @ddwmd/notify && npm run lint -w @ddwmd/gateway && npm run lint -w @ddwmd/web",
+    "test": "npm run test -w @ddwmd/common && npm run test -w @ddwmd/identity && npm run test -w @ddwmd/organization && npm run test -w @ddwmd/works && npm run test -w @ddwmd/governance && npm run test -w @ddwmd/notify && npm run test -w @ddwmd/gateway && npm run test -w @ddwmd/web",
+    "test:e2e": "npm run test:e2e -w @ddwmd/identity && npm run test:e2e -w @ddwmd/organization && npm run test:e2e -w @ddwmd/works && npm run test:e2e -w @ddwmd/governance && npm run test:e2e -w @ddwmd/notify",
+    "build": "npm run build -w @ddwmd/common && npm run build -w @ddwmd/identity && npm run build -w @ddwmd/organization && npm run build -w @ddwmd/works && npm run build -w @ddwmd/governance && npm run build -w @ddwmd/notify && npm run build -w @ddwmd/gateway && npm run build -w @ddwmd/web",
+    "prisma:generate": "npm run prisma:generate -w @ddwmd/identity && npm run prisma:generate -w @ddwmd/organization && npm run prisma:generate -w @ddwmd/works && npm run prisma:generate -w @ddwmd/governance && npm run prisma:generate -w @ddwmd/notify",
+    "prisma:migrate": "npm run prisma:migrate -w @ddwmd/identity && npm run prisma:migrate -w @ddwmd/organization && npm run prisma:migrate -w @ddwmd/works && npm run prisma:migrate -w @ddwmd/governance && npm run prisma:migrate -w @ddwmd/notify",
+    "prisma:seed": "npm run prisma:seed -w @ddwmd/organization && npm run prisma:seed -w @ddwmd/identity && npm run prisma:seed -w @ddwmd/works && npm run prisma:seed -w @ddwmd/governance && npm run prisma:seed -w @ddwmd/notify",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,js,json,md}\" \"packages/**/*.{ts,js,json,md}\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3"
+  }
+}

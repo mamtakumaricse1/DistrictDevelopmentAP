@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: works-storage
+  namespace: ddwmd
+spec:
+  # Use ReadWriteMany (NFS/CSI) before raising Works replicas above 1.
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi

@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: works
+  namespace: ddwmd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: works
+  template:
+    metadata:
+      labels:
+        app: works
+    spec:
+      terminationGracePeriodSeconds: 20
+      containers:
+        - name: works
+          image: ddwmd/works:0.1.0
+          ports:
+            - containerPort: 3003
+          env:
+            - name: WORKS_PORT
+              value: "3003"
+          envFrom:
+            - configMapRef:
+                name: ddwmd-config
+            - secretRef:
+                name: ddwmd-secrets
+          volumeMounts:
+            - name: storage
+              mountPath: /var/dashboard/storage
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3003
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: 3003
+          resources:
+            requests:
+              cpu: 150m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: works-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: works
+  namespace: ddwmd
+spec:
+  selector:
+    app: works
+  ports:
+    - port: 3003
+      targetPort: 3003

@@ -1,0 +1,30 @@
+# Horizontal scale on one Docker host.
+# Docker DNS round-robins a service name (identity, works, …) across replicas.
+# Host port mappings are removed so replicas do not collide.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.scale.yml --profile stack up -d --build --scale identity=2 --scale organization=2 --scale works=2 --scale governance=2 --scale notify=2 --scale gateway=2
+#
+# Browse at http://localhost:8081 (web) or http://localhost:3000 (gateway).
+# Works replicas share the works-storage volume. Multi-node clusters need RWX (NFS) for that volume.
+
+services:
+  identity:
+    ports: !reset []
+    expose:
+      - "3001"
+  organization:
+    ports: !reset []
+    expose:
+      - "3002"
+  works:
+    ports: !reset []
+    expose:
+      - "3003"
+  governance:
+    ports: !reset []
+    expose:
+      - "3004"
+  notify:
+    ports: !reset []
+    expose:
+      - "3005"

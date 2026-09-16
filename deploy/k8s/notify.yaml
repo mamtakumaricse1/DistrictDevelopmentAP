@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notify
+  namespace: ddwmd
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notify
+  template:
+    metadata:
+      labels:
+        app: notify
+    spec:
+      terminationGracePeriodSeconds: 20
+      containers:
+        - name: notify
+          image: ddwmd/notify:0.1.0
+          ports:
+            - containerPort: 3005
+          env:
+            - name: NOTIFY_PORT
+              value: "3005"
+          envFrom:
+            - configMapRef:
+                name: ddwmd-config
+            - secretRef:
+                name: ddwmd-secrets
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3005
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: 3005
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notify
+  namespace: ddwmd
+spec:
+  selector:
+    app: notify
+  ports:
+    - port: 3005
+      targetPort: 3005

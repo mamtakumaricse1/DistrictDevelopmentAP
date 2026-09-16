@@ -1,0 +1,332 @@
+x-app-runtime: &app-runtime
+  restart: unless-stopped
+  init: true
+  stop_grace_period: 20s
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    <<: *app-runtime
+    command: postgres -c max_connections=200
+    environment:
+      POSTGRES_USER: dashboard
+      POSTGRES_PASSWORD: dashboard
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dashboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    profiles: ["idp"]
+    <<: *app-runtime
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./deploy/keycloak/import:/opt/keycloak/data/import
+
+  identity:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.service
+      args:
+        SERVICE: identity
+        PORT: "3001"
+    profiles: ["stack"]
+    <<: *app-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      IDENTITY_PORT: 3001
+      API_PREFIX: api/v1
+      WEB_ORIGIN: http://localhost:8081
+      ORGANIZATION_URL: http://organization:3002
+      INTERNAL_API_KEY: dev-internal-key
+      INTERNAL_HTTP_TIMEOUT_MS: "3000"
+      AUTH_CACHE_TTL_MS: "15000"
+      ISSUER_CACHE_TTL_MS: "30000"
+      PRISMA_CONNECTION_LIMIT: "10"
+      PRISMA_POOL_TIMEOUT: "10"
+      IDENTITY_DATABASE_URL: postgresql://dashboard:dashboard@postgres:5432/district_identity?schema=public
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_SYSTEM_REALM: system
+      KEYCLOAK_API_AUDIENCE: ddwmd-api
+      KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/v1/health/ready',{signal:AbortSignal.timeout(4000)}).then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  organization:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.service
+      args:
+        SERVICE: organization
+        PORT: "3002"
+    profiles: ["stack"]
+    <<: *app-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      ORGANIZATION_PORT: 3002
+      API_PREFIX: api/v1
+      WEB_ORIGIN: http://localhost:8081
+      IDENTITY_URL: http://identity:3001
+      INTERNAL_API_KEY: dev-internal-key
+      INTERNAL_HTTP_TIMEOUT_MS: "3000"
+      AUTH_CACHE_TTL_MS: "15000"
+      PRISMA_CONNECTION_LIMIT: "10"
+      PRISMA_POOL_TIMEOUT: "10"
+      ORGANIZATION_DATABASE_URL: postgresql://dashboard:dashboard@postgres:5432/district_organization?schema=public
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_SYSTEM_REALM: system
+      KEYCLOAK_API_AUDIENCE: ddwmd-api
+      KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+    ports:
+      - "3002:3002"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3002/api/v1/health/ready',{signal:AbortSignal.timeout(4000)}).then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  works:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.service
+      args:
+        SERVICE: works
+        PORT: "3003"
+    profiles: ["stack"]
+    <<: *app-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      WORKS_PORT: 3003
+      API_PREFIX: api/v1
+      WEB_ORIGIN: http://localhost:8081
+      IDENTITY_URL: http://identity:3001
+      ORGANIZATION_URL: http://organization:3002
+      INTERNAL_API_KEY: dev-internal-key
+      INTERNAL_HTTP_TIMEOUT_MS: "3000"
+      AUTH_CACHE_TTL_MS: "15000"
+      ISSUER_CACHE_TTL_MS: "30000"
+      CATALOG_CACHE_TTL_MS: "30000"
+      PRISMA_CONNECTION_LIMIT: "10"
+      PRISMA_POOL_TIMEOUT: "10"
+      WORKS_DATABASE_URL: postgresql://dashboard:dashboard@postgres:5432/district_works?schema=public
+      NOTIFY_URL: http://notify:3005
+      STORAGE_ROOT: /var/dashboard/storage
+      STORAGE_PROVIDER: local
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_SYSTEM_REALM: system
+      KEYCLOAK_API_AUDIENCE: ddwmd-api
+      KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+    ports:
+      - "3003:3003"
+    volumes:
+      - works-storage:/var/dashboard/storage
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3003/api/v1/health/ready',{signal:AbortSignal.timeout(4000)}).then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  governance:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.service
+      args:
+        SERVICE: governance
+        PORT: "3004"
+    profiles: ["stack"]
+    <<: *app-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      GOVERNANCE_PORT: 3004
+      API_PREFIX: api/v1
+      WEB_ORIGIN: http://localhost:8081
+      IDENTITY_URL: http://identity:3001
+      ORGANIZATION_URL: http://organization:3002
+      NOTIFY_URL: http://notify:3005
+      INTERNAL_API_KEY: dev-internal-key
+      INTERNAL_HTTP_TIMEOUT_MS: "3000"
+      AUTH_CACHE_TTL_MS: "15000"
+      ISSUER_CACHE_TTL_MS: "30000"
+      PRISMA_CONNECTION_LIMIT: "10"
+      PRISMA_POOL_TIMEOUT: "10"
+      GOVERNANCE_DATABASE_URL: postgresql://dashboard:dashboard@postgres:5432/district_governance?schema=public
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_SYSTEM_REALM: system
+      KEYCLOAK_API_AUDIENCE: ddwmd-api
+      KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+    ports:
+      - "3004:3004"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3004/api/v1/health/ready',{signal:AbortSignal.timeout(4000)}).then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  notify:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.service
+      args:
+        SERVICE: notify
+        PORT: "3005"
+    profiles: ["stack"]
+    <<: *app-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NOTIFY_PORT: 3005
+      API_PREFIX: api/v1
+      WEB_ORIGIN: http://localhost:8081
+      IDENTITY_URL: http://identity:3001
+      ORGANIZATION_URL: http://organization:3002
+      INTERNAL_API_KEY: dev-internal-key
+      INTERNAL_HTTP_TIMEOUT_MS: "3000"
+      AUTH_CACHE_TTL_MS: "15000"
+      ISSUER_CACHE_TTL_MS: "30000"
+      PRISMA_CONNECTION_LIMIT: "10"
+      PRISMA_POOL_TIMEOUT: "10"
+      NOTIFY_DATABASE_URL: postgresql://dashboard:dashboard@postgres:5432/district_notify?schema=public
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_SYSTEM_REALM: system
+      KEYCLOAK_API_AUDIENCE: ddwmd-api
+      KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+    ports:
+      - "3005:3005"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3005/api/v1/health/ready',{signal:AbortSignal.timeout(4000)}).then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  gateway:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.service
+      args:
+        SERVICE: gateway
+        PORT: "3000"
+    profiles: ["stack"]
+    <<: *app-runtime
+    depends_on:
+      identity:
+        condition: service_healthy
+      organization:
+        condition: service_healthy
+      works:
+        condition: service_started
+      governance:
+        condition: service_started
+      notify:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      GATEWAY_PORT: 3000
+      API_PREFIX: api/v1
+      WEB_ORIGIN: http://localhost:8081
+      IDENTITY_URL: http://identity:3001
+      ORGANIZATION_URL: http://organization:3002
+      WORKS_URL: http://works:3003
+      GOVERNANCE_URL: http://governance:3004
+      NOTIFY_URL: http://notify:3005
+      GATEWAY_PROXY_TIMEOUT_MS: "120000"
+      INTERNAL_HTTP_TIMEOUT_MS: "3000"
+      UPLOAD_MAX_BYTES: "12582912"
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/v1/health',{signal:AbortSignal.timeout(4000)}).then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    profiles: ["stack"]
+    <<: *app-runtime
+    depends_on:
+      gateway:
+        condition: service_healthy
+    ports:
+      - "8081:80"
+
+volumes:
+  pgdata:
+  works-storage:

@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ddwmd-config
+  namespace: ddwmd
+data:
+  API_PREFIX: api/v1
+  WEB_ORIGIN: https://works.example.gov.in
+  IDENTITY_URL: http://identity:3001
+  ORGANIZATION_URL: http://organization:3002
+  WORKS_URL: http://works:3003
+  GOVERNANCE_URL: http://governance:3004
+  NOTIFY_URL: http://notify:3005
+  KEYCLOAK_SYSTEM_REALM: system
+  KEYCLOAK_API_AUDIENCE: ddwmd-api
+  KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+  INTERNAL_HTTP_TIMEOUT_MS: "3000"
+  AUTH_CACHE_TTL_MS: "15000"
+  ISSUER_CACHE_TTL_MS: "30000"
+  CATALOG_CACHE_TTL_MS: "30000"
+  GATEWAY_PROXY_TIMEOUT_MS: "120000"
+  PRISMA_CONNECTION_LIMIT: "10"
+  PRISMA_POOL_TIMEOUT: "10"
+  STORAGE_PROVIDER: local
+  STORAGE_ROOT: /var/dashboard/storage
+  UPLOAD_MAX_BYTES: "12582912"

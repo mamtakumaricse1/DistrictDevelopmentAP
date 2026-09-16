@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("GOVERNANCE_DATABASE_URL")
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum ActionStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+}
+
+model ReviewMeeting {
+  id           String         @id @default(uuid()) @db.Uuid
+  districtId   String         @map("district_id") @db.Uuid
+  title        String         @db.VarChar(300)
+  scheduledAt  DateTime       @map("scheduled_at")
+  venue        String?        @db.VarChar(200)
+  notes        String?
+  status       MeetingStatus  @default(SCHEDULED)
+  isActive     Boolean        @default(true) @map("is_active")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  createdById  String         @map("created_by_id") @db.Uuid
+  actions      ActionItem[]
+
+  @@index([districtId, scheduledAt])
+  @@map("review_meetings")
+}
+
+model ActionItem {
+  id             String          @id @default(uuid()) @db.Uuid
+  meetingId      String?         @map("meeting_id") @db.Uuid
+  meeting        ReviewMeeting?  @relation(fields: [meetingId], references: [id])
+  districtId     String          @map("district_id") @db.Uuid
+  departmentId   String?         @map("department_id") @db.Uuid
+  projectId      String?         @map("project_id") @db.Uuid
+  title          String          @db.VarChar(300)
+  description    String?
+  assigneeUserId String?         @map("assignee_user_id") @db.Uuid
+  dueDate        DateTime?       @map("due_date") @db.Date
+  status         ActionStatus    @default(OPEN)
+  isActive       Boolean         @default(true) @map("is_active")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  createdById    String          @map("created_by_id") @db.Uuid
+  updatedById    String?         @map("updated_by_id") @db.Uuid
+
+  @@index([districtId, status])
+  @@index([departmentId])
+  @@map("action_items")
+}

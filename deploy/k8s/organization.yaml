@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: organization
+  namespace: ddwmd
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: organization
+  template:
+    metadata:
+      labels:
+        app: organization
+    spec:
+      terminationGracePeriodSeconds: 20
+      containers:
+        - name: organization
+          image: ddwmd/organization:0.1.0
+          ports:
+            - containerPort: 3002
+          env:
+            - name: ORGANIZATION_PORT
+              value: "3002"
+          envFrom:
+            - configMapRef:
+                name: ddwmd-config
+            - secretRef:
+                name: ddwmd-secrets
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3002
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: 3002
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: organization
+  namespace: ddwmd
+spec:
+  selector:
+    app: organization
+  ports:
+    - port: 3002
+      targetPort: 3002

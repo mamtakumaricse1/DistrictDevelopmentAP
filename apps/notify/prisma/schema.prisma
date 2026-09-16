@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NOTIFY_DATABASE_URL")
+}
+
+model Notification {
+  id           String              @id @default(uuid()) @db.Uuid
+  districtId   String              @map("district_id") @db.Uuid
+  departmentId String?             @map("department_id") @db.Uuid
+  title        String              @db.VarChar(300)
+  body         String
+  type         String              @db.VarChar(32)
+  entityType   String?             @map("entity_type") @db.VarChar(64)
+  entityId     String?             @map("entity_id") @db.Uuid
+  createdAt    DateTime            @default(now()) @map("created_at")
+  reads        NotificationRead[]
+
+  @@index([districtId, createdAt])
+  @@map("notifications")
+}
+
+model NotificationRead {
+  notificationId String       @map("notification_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  readAt         DateTime     @default(now()) @map("read_at")
+  notification   Notification @relation(fields: [notificationId], references: [id])
+
+  @@id([notificationId, userId])
+  @@map("notification_reads")
+}

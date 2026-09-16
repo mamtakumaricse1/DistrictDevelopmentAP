@@ -1,0 +1,17 @@
+---
+description: Multi-phase District Development Works Monitoring Dashboard
+globs:
+alwaysApply: true
+---
+
+# District Works Dashboard
+
+- Work **one phase at a time**. Do not implement remaining business modules early.
+- **Never hardcode Changlang** (or any district) in services or UI logic. Districts are data.
+- **One Keycloak realm per district**, plus a `system` realm for SUPER_ADMIN. Validate JWT `iss` against registered issuers.
+- **Never store passwords** in PostgreSQL. Keycloak is the IdP.
+- **Never authorize only in React.** Scope every query by district / department from `AuthContext`.
+- **Never overwrite** `project_progress` history. Corrections create a new `version`.
+- **Services are separate packages and databases:** `@ddwmd/gateway` (no DB), `@ddwmd/identity` (`district_identity`), `@ddwmd/organization` (`district_organization`), `@ddwmd/works` (`district_works`), `@ddwmd/governance` (`district_governance`), `@ddwmd/notify` (`district_notify`). Shared code is `@ddwmd/common` only. Do not invent a service per table. Do not add a combined monolith `AppModule`. Do not share Prisma models across services.
+- Services sync over HTTP (issuers, login realms, user mapping, department catalog, notification ingest). Never hardcode Changlang.
+- Official design: `/docs`. Follow `docs/development-phases.md` before starting a phase.
