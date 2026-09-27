@@ -1,6 +1,7 @@
 import {
   Button,
   FormControl,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Select,
@@ -30,7 +31,7 @@ import {
   type ProjectStatus,
 } from '../../services/api/projects';
 import { districtName } from '../administration/panels/labels';
-import { ErrorAlert, FormDialog } from '../administration/panels/shared';
+import { ErrorAlert, FormDialog, fieldState, selectError } from '../administration/panels/shared';
 
 const STATUSES: ProjectStatus[] = ['DRAFT', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CLOSED'];
 const PAGE_SIZE = 20;
@@ -64,6 +65,7 @@ export function ProjectsPage() {
   const [departmentId, setDepartmentId] = useState(profile?.departmentIds[0] ?? '');
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectRecord | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const districts = useQuery({ queryKey: ['admin', 'districts'], queryFn: adminApi.districts });
   const departments = useQuery({ queryKey: ['admin', 'departments'], queryFn: () => adminApi.departments() });
@@ -284,14 +286,15 @@ export function ProjectsPage() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSubmit={form.handleSubmit((values) => create.mutate(values))}
+        error={create.error}
       >
-        <FormControl fullWidth>
+        <FormControl fullWidth error={Boolean(selectError(form, 'departmentId'))}>
           <InputLabel id="create-department">Department</InputLabel>
           <Select
             labelId="create-department"
             label="Department"
             value={form.watch('departmentId') ?? ''}
-            onChange={(event) => form.setValue('departmentId', event.target.value)}
+            onChange={(event) => form.setValue('departmentId', event.target.value, { shouldValidate: true })}
           >
             {isDepartmentScoped ? null : <MenuItem value="">Select department</MenuItem>}
             {(departments.data ?? []).map((department) => (
@@ -300,12 +303,13 @@ export function ProjectsPage() {
               </MenuItem>
             ))}
           </Select>
+          {selectError(form, 'departmentId') ? <FormHelperText>{selectError(form, 'departmentId')}</FormHelperText> : null}
         </FormControl>
-        <TextField label="Name" {...form.register('name')} required error={Boolean(form.formState.errors.name)} helperText={form.formState.errors.name?.message} />
-        <TextField label="Financial year" type="number" {...form.register('financialYear')} error={Boolean(form.formState.errors.financialYear)} helperText={form.formState.errors.financialYear?.message} />
-        <TextField label="Sanctioned amount" {...form.register('sanctionedAmount')} error={Boolean(form.formState.errors.sanctionedAmount)} helperText={form.formState.errors.sanctionedAmount?.message} />
-        <TextField label="Released amount" {...form.register('releasedAmount')} />
-        <TextField label="Contractor" {...form.register('contractor')} />
+        <TextField label="Name" required {...fieldState(form, 'name')} />
+        <TextField label="Financial year" type="number" {...fieldState(form, 'financialYear')} />
+        <TextField label="Sanctioned amount" {...fieldState(form, 'sanctionedAmount')} />
+        <TextField label="Released amount" {...fieldState(form, 'releasedAmount')} />
+        <TextField label="Contractor" {...fieldState(form, 'contractor')} />
         <FormControl fullWidth>
           <InputLabel id="create-impl">Implementing agency</InputLabel>
           <Select
@@ -338,17 +342,21 @@ export function ProjectsPage() {
             ))}
           </Select>
         </FormControl>
-        <TextField label="Location" {...form.register('locationText')} />
-        <TextField label="Description" multiline minRows={2} {...form.register('description')} />
-        <TextField label="Start date" type="date" InputLabelProps={{ shrink: true }} {...form.register('startDate')} />
-        <TextField label="End date" type="date" InputLabelProps={{ shrink: true }} {...form.register('endDate')} error={Boolean(form.formState.errors.endDate)} helperText={form.formState.errors.endDate?.message} />
-        <TextField label="Expected completion" type="date" InputLabelProps={{ shrink: true }} {...form.register('expectedCompletion')} />
+        <TextField label="Location" {...fieldState(form, 'locationText')} />
+        <TextField label="Description" multiline minRows={2} {...fieldState(form, 'description')} />
+        <TextField label="Start date" type="date" InputLabelProps={{ shrink: true }} {...fieldState(form, 'startDate')} />
+        <TextField label="End date" type="date" InputLabelProps={{ shrink: true }} {...fieldState(form, 'endDate')} />
+        <TextField label="Expected completion" type="date" InputLabelProps={{ shrink: true }} {...fieldState(form, 'expectedCompletion')} />
       </FormDialog>
 
       <FormDialog
         title="Edit project"
         open={Boolean(editing)}
-        onClose={() => setEditing(null)}
+        onClose={() => {
+          setEditing(null);
+          setEditError(null);
+        }}
+        error={editError ?? update.error}
         onSubmit={() => {
           if (!editing) {
             return;
@@ -361,8 +369,10 @@ export function ProjectsPage() {
             description: editing.description ?? '',
           });
           if (!parsed.success) {
+            setEditError(parsed.error.issues[0]?.message ?? 'Check the form and try again.');
             return;
           }
+          setEditError(null);
           update.mutate({
             id: editing.id,
             body: {

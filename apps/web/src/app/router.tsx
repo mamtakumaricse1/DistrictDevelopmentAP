@@ -1,5 +1,5 @@
-import { Navigate, createBrowserRouter } from 'react-router-dom';
-import { OfficerOnly, RequireAuth } from '../auth/RequireAuth';
+import { createBrowserRouter } from 'react-router-dom';
+import { HomeRedirect, RequireAuth, RequirePermission } from '../auth/RequireAuth';
 import { AppShell } from '../layouts/AppShell';
 import { ActionsPage } from '../modules/actions/ActionsPage';
 import { AdministrationPage } from '../modules/administration/AdministrationPage';
@@ -34,24 +34,25 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
-      { path: 'dashboard', element: <OfficerOnly><DashboardPage /></OfficerOnly> },
-      { path: 'departments/:departmentId', element: <OfficerOnly><DepartmentDashboardPage /></OfficerOnly> },
-      { path: 'schemes', element: <SchemesPage /> },
-      { path: 'schemes/:id', element: <OfficerOnly><SchemeDetailPage /></OfficerOnly> },
-      { path: 'blocks', element: <OfficerOnly><BlocksPage /></OfficerOnly> },
-      { path: 'blocks/:locationId', element: <OfficerOnly><BlockDetailPage /></OfficerOnly> },
-      { path: 'infrastructure', element: <OfficerOnly><InfrastructurePage /></OfficerOnly> },
-      { path: 'human-development', element: <OfficerOnly><HumanDevelopmentPage /></OfficerOnly> },
-      { path: 'exceptions', element: <OfficerOnly><ExceptionsPage /></OfficerOnly> },
-      { path: 'projects', element: <OfficerOnly><ProjectsPage /></OfficerOnly> },
-      { path: 'projects/:id', element: <OfficerOnly><ProjectDetailPage /></OfficerOnly> },
-      { path: 'actions', element: <OfficerOnly><ActionsPage /></OfficerOnly> },
-      { path: 'meetings', element: <OfficerOnly><MeetingsPage /></OfficerOnly> },
-      { path: 'meetings/:id', element: <OfficerOnly><MeetingDetailPage /></OfficerOnly> },
-      { path: 'reports', element: <OfficerOnly><ReportsPage /></OfficerOnly> },
-      { path: 'administration', element: <OfficerOnly><AdministrationPage /></OfficerOnly> },
-      { path: 'health', element: <OfficerOnly><HealthPage /></OfficerOnly> },
+      { index: true, element: <HomeRedirect /> },
+      { path: 'dashboard', element: <RequirePermission permission="dashboard:read" officerOnly><DashboardPage /></RequirePermission> },
+      { path: 'departments/:departmentId', element: <RequirePermission permission="dashboard:read" officerOnly><DepartmentDashboardPage /></RequirePermission> },
+      { path: 'schemes', element: <RequirePermission permission="project:read"><SchemesPage /></RequirePermission> },
+      { path: 'schemes/:id', element: <RequirePermission permission="project:read" officerOnly><SchemeDetailPage /></RequirePermission> },
+      { path: 'blocks', element: <RequirePermission permission="dashboard:read" officerOnly><BlocksPage /></RequirePermission> },
+      { path: 'blocks/:locationId', element: <RequirePermission permission="dashboard:read" officerOnly><BlockDetailPage /></RequirePermission> },
+      { path: 'infrastructure', element: <RequirePermission permission="dashboard:read" officerOnly><InfrastructurePage /></RequirePermission> },
+      { path: 'human-development', element: <RequirePermission permission="dashboard:read" officerOnly><HumanDevelopmentPage /></RequirePermission> },
+      { path: 'exceptions', element: <RequirePermission permission="dashboard:read" officerOnly><ExceptionsPage /></RequirePermission> },
+      { path: 'projects', element: <RequirePermission permission="project:read" officerOnly><ProjectsPage /></RequirePermission> },
+      { path: 'projects/:id', element: <RequirePermission permission="project:read" officerOnly><ProjectDetailPage /></RequirePermission> },
+      { path: 'actions', element: <RequirePermission anyOf={['action:update', 'action:manage']} officerOnly><ActionsPage /></RequirePermission> },
+      { path: 'meetings', element: <RequirePermission permission="meeting:manage" officerOnly><MeetingsPage /></RequirePermission> },
+      { path: 'meetings/:id', element: <RequirePermission permission="meeting:manage" officerOnly><MeetingDetailPage /></RequirePermission> },
+      { path: 'reports', element: <RequirePermission permission="report:export" officerOnly><ReportsPage /></RequirePermission> },
+      { path: 'administration', element: <RequirePermission anyOf={['user:manage', 'master:manage', 'district:manage']} officerOnly><AdministrationPage /></RequirePermission> },
+      { path: 'health', element: <RequirePermission permission="dashboard:read" officerOnly><HealthPage /></RequirePermission> },
+      { path: '*', element: <HomeRedirect /> },
     ],
   },
 ]);

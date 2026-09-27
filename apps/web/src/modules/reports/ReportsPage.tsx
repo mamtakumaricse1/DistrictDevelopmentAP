@@ -2,6 +2,7 @@ import { Alert, Button, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
+import { userFacingMessage } from '../../lib/errors';
 import { reportsApi } from '../../services/api/reports';
 import { schemesApi } from '../../services/api/schemes';
 
@@ -26,7 +27,7 @@ export function ReportsPage() {
     try {
       await fn();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Export failed.');
+      setError(userFacingMessage(err).summary);
     }
   }
 

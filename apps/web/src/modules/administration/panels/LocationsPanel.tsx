@@ -1,4 +1,4 @@
-import { Button, FormControl, InputLabel, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField } from '@mui/material';
+import { Button, FormControl, FormHelperText, InputLabel, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -8,10 +8,10 @@ import { UUID_LIKE } from '../../../lib/ids';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi } from '../../../services/api/admin';
 import { districtName } from './labels';
-import { ErrorAlert, FormDialog } from './shared';
+import { ErrorAlert, FormDialog, fieldState, selectError } from './shared';
 
 const schema = z.object({
-  districtId: z.string().regex(UUID_LIKE, 'Must be a UUID'),
+  districtId: z.string().regex(UUID_LIKE, 'Select a district.'),
   parentId: z.string().optional(),
   type: z.enum(['BLOCK', 'CIRCLE', 'GRAM_PANCHAYAT', 'VILLAGE']),
   code: z.string().min(2).max(64),
@@ -72,16 +72,17 @@ export function LocationsPanel() {
           ))}
         </TableBody>
       </Table>
-      <FormDialog title="Add location" open={open} onClose={() => setOpen(false)} onSubmit={form.handleSubmit((values) => create.mutate(values))}>
-        <FormControl fullWidth>
+      <FormDialog title="Add location" open={open} onClose={() => setOpen(false)} error={create.error} onSubmit={form.handleSubmit((values) => create.mutate(values))}>
+        <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
           <InputLabel id="loc-district">District</InputLabel>
-          <Select labelId="loc-district" label="District" value={form.watch('districtId')} onChange={(event) => form.setValue('districtId', event.target.value)}>
+          <Select labelId="loc-district" label="District" value={form.watch('districtId')} onChange={(event) => form.setValue('districtId', event.target.value, { shouldValidate: true })}>
             {(districts.data ?? []).map((district) => (
               <MenuItem key={district.id} value={district.id}>
                 {district.name}
               </MenuItem>
             ))}
           </Select>
+          {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
         </FormControl>
         <TextField select label="Type" value={form.watch('type')} onChange={(event) => form.setValue('type', event.target.value as z.infer<typeof schema>['type'])}>
           <MenuItem value="BLOCK">Block</MenuItem>
@@ -89,11 +90,11 @@ export function LocationsPanel() {
           <MenuItem value="GRAM_PANCHAYAT">Gram panchayat</MenuItem>
           <MenuItem value="VILLAGE">Village</MenuItem>
         </TextField>
-        <TextField label="Code" {...form.register('code')} required />
-        <TextField label="Name" {...form.register('name')} required />
-        <TextField label="Population" type="number" {...form.register('population')} />
-        <TextField label="Latitude" type="number" {...form.register('latitude')} />
-        <TextField label="Longitude" type="number" {...form.register('longitude')} />
+        <TextField label="Code" required {...fieldState(form, 'code')} />
+        <TextField label="Name" required {...fieldState(form, 'name')} />
+        <TextField label="Population" type="number" {...fieldState(form, 'population')} />
+        <TextField label="Latitude" type="number" {...fieldState(form, 'latitude')} />
+        <TextField label="Longitude" type="number" {...fieldState(form, 'longitude')} />
       </FormDialog>
     </Stack>
   );

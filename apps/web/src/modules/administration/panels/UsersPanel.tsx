@@ -2,6 +2,7 @@ import {
   Button,
   FormControl,
   FormControlLabel,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Select,
@@ -22,7 +23,7 @@ import { z } from 'zod';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi, type UserRecord } from '../../../services/api/admin';
 import { districtName } from './labels';
-import { ErrorAlert, FormDialog } from './shared';
+import { ErrorAlert, FormDialog, fieldState, selectError } from './shared';
 
 const schema = z.object({
   email: z.string().email(),
@@ -32,6 +33,10 @@ const schema = z.object({
   districtId: z.string().optional(),
   departmentId: z.string().optional(),
   keycloakIssuer: z.string().min(8).max(300),
+}).superRefine((value, ctx) => {
+  if (value.roleCode !== 'SUPER_ADMIN' && !value.districtId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['districtId'], message: 'Select a district.' });
+  }
 });
 
 export function UsersPanel() {
@@ -43,6 +48,7 @@ export function UsersPanel() {
   const roles = useQuery({ queryKey: ['admin', 'roles'], queryFn: adminApi.roles });
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<UserRecord | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const defaultDistrictId = profile?.isSuperAdmin ? '' : (profile?.districtIds[0] ?? '');
   const defaultIssuer =
     districts.data?.find((district) => district.id === defaultDistrictId)?.keycloakIssuer ?? profile?.issuer ?? '';
@@ -135,10 +141,11 @@ export function UsersPanel() {
         onClose={() => setCreateOpen(false)}
         onSubmit={form.handleSubmit((values) => create.mutate(values))}
         submitLabel="Create mapping"
+        error={create.error}
       >
-        <TextField label="Email" type="email" {...form.register('email')} required />
-        <TextField label="Display name" {...form.register('displayName')} required />
-        <TextField label="Phone" {...form.register('phone')} />
+        <TextField label="Email" type="email" required {...fieldState(form, 'email')} />
+        <TextField label="Display name" required {...fieldState(form, 'displayName')} />
+        <TextField label="Phone" {...fieldState(form, 'phone')} />
         <FormControl fullWidth>
           <InputLabel id="user-role">Role</InputLabel>
           <Select
@@ -157,7 +164,7 @@ export function UsersPanel() {
           </Select>
         </FormControl>
         {form.watch('roleCode') !== 'SUPER_ADMIN' ? (
-          <FormControl fullWidth>
+          <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
             <InputLabel id="user-district">District</InputLabel>
             <Select
               labelId="user-district"
@@ -177,6 +184,7 @@ export function UsersPanel() {
                 </MenuItem>
               ))}
             </Select>
+            {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
           </FormControl>
         ) : null}
         {['DEPARTMENT_USER', 'DATA_ENTRY', 'BDO'].includes(form.watch('roleCode')) ? (
@@ -200,20 +208,33 @@ export function UsersPanel() {
         ) : null}
         <TextField
           label="Keycloak issuer"
-          {...form.register('keycloakIssuer')}
           required
-          helperText={issuerHint ? `Suggested: ${issuerHint}` : 'Must match the Keycloak realm. No password is stored here.'}
+          helperText={form.formState.errors.keycloakIssuer?.message ?? (issuerHint ? `Suggested: ${issuerHint}` : 'Must match the Keycloak realm. No password is stored here.')}
+          {...fieldState(form, 'keycloakIssuer')}
         />
       </FormDialog>
 
       <FormDialog
         title="Edit user"
         open={Boolean(editing)}
-        onClose={() => setEditing(null)}
+        onClose={() => {
+          setEditing(null);
+          setEditError(null);
+        }}
+        error={editError ?? update.error}
         onSubmit={() => {
           if (!editing) {
             return;
           }
+          const parsed = z.object({ displayName: z.string().min(2).max(200), phone: z.string().max(20).optional() }).safeParse({
+            displayName: editing.displayName,
+            phone: editing.phone ?? '',
+          });
+          if (!parsed.success) {
+            setEditError(parsed.error.issues[0]?.message ?? 'Check the form and try again.');
+            return;
+          }
+          setEditError(null);
           update.mutate({
             id: editing.id,
             body: {

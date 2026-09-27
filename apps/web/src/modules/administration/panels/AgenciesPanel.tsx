@@ -2,6 +2,7 @@ import {
   Button,
   FormControl,
   FormControlLabel,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Select,
@@ -23,10 +24,10 @@ import { UUID_LIKE } from '../../../lib/ids';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi, type AgencyRecord } from '../../../services/api/admin';
 import { districtName } from './labels';
-import { ErrorAlert, FormDialog } from './shared';
+import { ErrorAlert, FormDialog, fieldState, selectError } from './shared';
 
 const schema = z.object({
-  districtId: z.string().regex(UUID_LIKE, 'Must be a UUID'),
+  districtId: z.string().regex(UUID_LIKE, 'Select a district.'),
   departmentId: z.string().regex(UUID_LIKE).optional().or(z.literal('')),
   code: z.string().min(2).max(32),
   name: z.string().min(2).max(200),
@@ -42,6 +43,7 @@ export function AgenciesPanel() {
   const agencies = useQuery({ queryKey: ['admin', 'agencies'], queryFn: () => adminApi.agencies() });
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<AgencyRecord | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const defaultDistrictId = profile?.isSuperAdmin ? '' : (profile?.districtIds[0] ?? '');
 
   const form = useForm<z.infer<typeof schema>>({
@@ -114,8 +116,9 @@ export function AgenciesPanel() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSubmit={form.handleSubmit((values) => create.mutate(values))}
+        error={create.error}
       >
-        <FormControl fullWidth>
+        <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
           <InputLabel id="agency-district">District</InputLabel>
           <Select
             labelId="agency-district"
@@ -129,6 +132,7 @@ export function AgenciesPanel() {
               </MenuItem>
             ))}
           </Select>
+          {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
         </FormControl>
         <FormControl fullWidth>
           <InputLabel id="agency-dept">Department (optional)</InputLabel>
@@ -148,8 +152,8 @@ export function AgenciesPanel() {
               ))}
           </Select>
         </FormControl>
-        <TextField label="Code" {...form.register('code')} required />
-        <TextField label="Name" {...form.register('name')} required />
+        <TextField label="Code" required {...fieldState(form, 'code')} />
+        <TextField label="Name" required {...fieldState(form, 'name')} />
         <FormControl fullWidth>
           <InputLabel id="agency-type">Type</InputLabel>
           <Select
@@ -168,11 +172,21 @@ export function AgenciesPanel() {
       <FormDialog
         title="Edit agency"
         open={Boolean(editing)}
-        onClose={() => setEditing(null)}
+        onClose={() => {
+          setEditing(null);
+          setEditError(null);
+        }}
+        error={editError ?? update.error}
         onSubmit={() => {
           if (!editing) {
             return;
           }
+          const parsed = schema.pick({ name: true }).safeParse({ name: editing.name });
+          if (!parsed.success) {
+            setEditError(parsed.error.issues[0]?.message ?? 'Check the form and try again.');
+            return;
+          }
+          setEditError(null);
           update.mutate({
             id: editing.id,
             body: { name: editing.name, agencyType: editing.agencyType, isActive: editing.isActive },

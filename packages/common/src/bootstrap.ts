@@ -1,4 +1,5 @@
 import { Logger, ValidationPipe, type Type } from '@nestjs/common';
+import { validationException } from './http/friendly-error';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -35,6 +36,7 @@ export async function bootstrapService(module: Type<unknown>, options: Bootstrap
         whitelist: true,
         forbidNonWhitelisted: true,
         transform: true,
+        exceptionFactory: validationException,
       }),
     );
     const swagger = new DocumentBuilder()

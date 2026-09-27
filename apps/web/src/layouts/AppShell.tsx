@@ -1,4 +1,3 @@
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -35,7 +34,10 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { govColors } from '../app/theme';
 import { useAuth } from '../auth/AuthProvider';
+import { GovSeal } from '../components/GovSeal';
+import { TricolorStrip } from '../components/TricolorStrip';
 import { notificationsApi } from '../services/api/notifications';
 
 const DRAWER_WIDTH = 260;
@@ -90,13 +92,19 @@ export function AppShell() {
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Toolbar sx={{ gap: 1.5, px: 2 }}>
-        <AccountBalanceIcon />
-        <Typography variant="subtitle1" fontWeight={700} lineHeight={1.25}>
-          {isCitizen ? 'Public view' : isDepartmentScoped ? 'Department desk' : 'DC Dashboard'}
-        </Typography>
+      <Toolbar sx={{ gap: 1.5, px: 2, alignItems: 'center', minHeight: 84 }}>
+        <GovSeal size={46} />
+        <Box>
+          <Typography sx={{ color: govColors.gold, fontSize: 10, fontWeight: 700, letterSpacing: '0.14em' }}>
+            ARUNACHAL PRADESH
+          </Typography>
+          <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2}>
+            {isCitizen ? 'Public view' : isDepartmentScoped ? 'Department desk' : 'DC Dashboard'}
+          </Typography>
+        </Box>
       </Toolbar>
-      <List sx={{ px: 1, flex: 1 }}>
+      <Box sx={{ mx: 2, mb: 1, height: '1px', bgcolor: 'rgba(196,163,90,0.4)' }} />
+      <List sx={{ px: 1, flex: 1, minHeight: 0, overflow: 'auto' }}>
         {visibleNav.map((item) => (
 
           <ListItemButton
@@ -106,7 +114,19 @@ export function AppShell() {
               navigate(item.path);
               setMobileOpen(false);
             }}
-            sx={{ borderRadius: 1, mb: 0.5 }}
+            sx={{
+              borderRadius: 1,
+              mb: 0.5,
+              color: 'inherit',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' },
+              '&.Mui-selected': {
+                bgcolor: 'rgba(255,255,255,0.12)',
+                color: '#fff',
+                boxShadow: `inset 3px 0 0 ${govColors.saffronBright}`,
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' },
+                '& .MuiListItemIcon-root': { color: govColors.gold },
+              },
+            }}
           >
             <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>{item.icon}</ListItemIcon>
             <ListItemText
@@ -121,27 +141,28 @@ export function AppShell() {
           </ListItemButton>
         ))}
       </List>
-      <Box sx={{ px: 2, pb: 2 }}>
-        <Typography variant="caption" color="rgba(255,255,255,0.7)">
-          {isCitizen
-            ? 'Published district figures for public transparency. View only — no editing.'
-            : 'Multi-district platform. District name and logo come from configuration, not source code.'}
+      <Box sx={{ px: 2, py: 1.75, flexShrink: 0, borderTop: '1px solid rgba(196,163,90,0.35)' }}>
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.75)', letterSpacing: '0.04em' }}>
+          {isCitizen ? 'Public view · read only' : 'Govt. of Arunachal Pradesh'}
         </Typography>
       </Box>
     </Box>
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+      <TricolorStrip fixed />
       <AppBar
         position="fixed"
         elevation={0}
         sx={{
+          top: 5,
+          width: { md: isCitizen ? '100%' : `calc(100% - ${DRAWER_WIDTH}px)` },
+          ml: { md: isCitizen ? 0 : `${DRAWER_WIDTH}px` },
           zIndex: theme.zIndex.drawer + 1,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-          color: 'text.primary',
+          bgcolor: govColors.navyDark,
+          color: '#fff',
+          borderBottom: `3px solid ${govColors.gold}`,
         }}
       >
         <Toolbar>
@@ -156,10 +177,27 @@ export function AppShell() {
               <MenuIcon />
             </IconButton>
           )}
-          <Typography variant="subtitle1" fontWeight={600} noWrap sx={{ flexGrow: 1 }}>
+          <Typography
+            variant="subtitle1"
+            fontWeight={650}
+            noWrap
+            sx={{ flexGrow: 1, minWidth: 0, fontFamily: '"Source Serif 4", Georgia, serif' }}
+          >
             {isCitizen ? 'Public schemes' : title}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }} noWrap>
+          <Typography
+            variant="body2"
+            noWrap
+            sx={{
+              display: { xs: 'none', sm: 'block' },
+              mr: 2,
+              px: 1.25,
+              py: 0.4,
+              borderRadius: 99,
+              bgcolor: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.16)',
+            }}
+          >
             {profile?.displayName}
           </Typography>
           {hasPermission('notification:read') ? (
@@ -201,7 +239,12 @@ export function AppShell() {
               </Menu>
             </>
           ) : null}
-          <Button color="inherit" startIcon={<LogoutIcon />} onClick={() => void logout()}>
+          <Button
+            color="inherit"
+            startIcon={<LogoutIcon />}
+            onClick={() => void logout()}
+            sx={{ border: '1px solid rgba(255,255,255,0.28)' }}
+          >
             Sign out
           </Button>
         </Toolbar>
@@ -216,8 +259,10 @@ export function AppShell() {
               '& .MuiDrawer-paper': {
                 width: DRAWER_WIDTH,
                 boxSizing: 'border-box',
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
+                top: 5,
+                height: 'calc(100% - 5px)',
+                bgcolor: govColors.navy,
+                color: '#fff',
                 borderRight: 0,
               },
             }}
@@ -233,8 +278,8 @@ export function AppShell() {
             sx={{
               '& .MuiDrawer-paper': {
                 width: DRAWER_WIDTH,
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
+                bgcolor: govColors.navy,
+                color: '#fff',
               },
             }}
           >
@@ -248,10 +293,15 @@ export function AppShell() {
         sx={{
           flexGrow: 1,
           p: { xs: 2, md: 3 },
+          pt: { xs: 2, md: 3 },
+          minWidth: 0,
+          overflowX: 'auto',
           width: { md: isCitizen ? '100%' : `calc(100% - ${DRAWER_WIDTH}px)` },
+          bgcolor: 'background.default',
         }}
       >
         <Toolbar />
+        <Box sx={{ height: 5 }} />
         <Outlet />
       </Box>
     </Box>

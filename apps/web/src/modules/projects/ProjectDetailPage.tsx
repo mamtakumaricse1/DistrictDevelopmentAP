@@ -10,7 +10,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { StatusChip } from '../../components/StatusChip';
 import { progressSchema, validateUpload } from '../../lib/validation';
 import { projectsApi } from '../../services/api/projects';
-import { ErrorAlert, FormDialog } from '../administration/panels/shared';
+import { ErrorAlert, FormDialog, fieldState } from '../administration/panels/shared';
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -156,23 +156,11 @@ export function ProjectDetailPage() {
         open={progressOpen}
         onClose={() => setProgressOpen(false)}
         onSubmit={form.handleSubmit((values) => submit.mutate(values))}
+        error={submit.error}
       >
-        <TextField
-          label="Period YYYY-MM"
-          {...form.register('periodYm')}
-          error={Boolean(form.formState.errors.periodYm)}
-          helperText={form.formState.errors.periodYm?.message}
-          required
-        />
-        <TextField
-          label="Physical %"
-          type="number"
-          {...form.register('physicalPercent')}
-          error={Boolean(form.formState.errors.physicalPercent)}
-          helperText={form.formState.errors.physicalPercent?.message}
-          required
-        />
-        <TextField label="Financial amount" {...form.register('financialAmount')} helperText={form.formState.errors.financialAmount?.message} />
+        <TextField label="Period YYYY-MM" required {...fieldState(form, 'periodYm')} />
+        <TextField label="Physical %" type="number" required {...fieldState(form, 'physicalPercent')} />
+        <TextField label="Financial amount" {...fieldState(form, 'financialAmount')} />
         <TextField
           select
           label="Status"
@@ -185,7 +173,7 @@ export function ProjectDetailPage() {
             </MenuItem>
           ))}
         </TextField>
-        <TextField label="Remarks" multiline minRows={2} {...form.register('remarks')} helperText={form.formState.errors.remarks?.message} />
+        <TextField label="Remarks" multiline minRows={2} {...fieldState(form, 'remarks')} />
       </FormDialog>
     </>
   );

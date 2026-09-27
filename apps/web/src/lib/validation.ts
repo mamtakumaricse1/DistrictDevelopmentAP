@@ -1,14 +1,61 @@
 import { z } from 'zod';
 import { UUID_LIKE } from './ids';
 
-export const periodYmSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Use YYYY-MM');
-export const uuidSchema = z.string().regex(UUID_LIKE, 'Must be a UUID');
+function fieldLabel(path: PropertyKey[]): string {
+  const last = path[path.length - 1];
+  if (typeof last !== 'string' || !last) {
+    return 'This field';
+  }
+  const words = last
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]/g, ' ')
+    .trim()
+    .toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+z.setErrorMap((issue, ctx) => {
+  const label = fieldLabel(issue.path);
+  if (issue.code === z.ZodIssueCode.invalid_type) {
+    return { message: `${label} is required.` };
+  }
+  if (issue.code === z.ZodIssueCode.too_small) {
+    if (issue.type === 'string') {
+      return { message: Number(issue.minimum) <= 1 ? `${label} is required.` : `${label} must be at least ${issue.minimum} characters.` };
+    }
+    if (issue.type === 'number') {
+      return { message: `${label} must be ${issue.minimum} or more.` };
+    }
+  }
+  if (issue.code === z.ZodIssueCode.too_big) {
+    if (issue.type === 'string') {
+      return { message: `${label} must be at most ${issue.maximum} characters.` };
+    }
+    if (issue.type === 'number') {
+      return { message: `${label} must be ${issue.maximum} or less.` };
+    }
+  }
+  if (issue.code === z.ZodIssueCode.invalid_string) {
+    if (issue.validation === 'email') {
+      return { message: 'Enter a valid email address.' };
+    }
+    return { message: `${label} is not in the expected format.` };
+  }
+  if (issue.code === z.ZodIssueCode.invalid_enum_value) {
+    return { message: `Choose a valid ${label.toLowerCase()}.` };
+  }
+  const fallback = ctx.defaultError === 'Required' ? `${label} is required.` : ctx.defaultError;
+  return { message: fallback };
+});
+
+export const periodYmSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Use a month in YYYY-MM format, for example 2026-09.');
+export const uuidSchema = z.string().regex(UUID_LIKE, 'Select a valid record.');
 export const optionalUuidSchema = z.union([uuidSchema, z.literal('')]).optional();
-export const percentSchema = z.coerce.number({ invalid_type_error: 'Must be a number' }).min(0).max(100);
+export const percentSchema = z.coerce.number({ invalid_type_error: 'Enter a number.' }).min(0, 'Enter a percentage from 0 to 100.').max(100, 'Enter a percentage from 0 to 100.');
 export const moneySchema = z
   .string()
   .optional()
-  .refine((value) => !value || (!Number.isNaN(Number(value)) && Number(value) >= 0), 'Must be 0 or more');
+  .refine((value) => !value || (!Number.isNaN(Number(value)) && Number(value) >= 0), 'Enter an amount of 0 or more.');
 
 export const projectCreateSchema = z
   .object({

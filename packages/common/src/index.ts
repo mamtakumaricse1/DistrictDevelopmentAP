@@ -18,6 +18,7 @@ export {
 } from './auth/tokens';
 export type { DistrictIssuerStore, DistrictIssuerRecord, DatabasePing } from './auth/tokens';
 export { HttpExceptionFilter } from './http/http-exception.filter';
+export { friendlyValidationLine, publicErrorMessage, validationException } from './http/friendly-error';
 export { RequestIdInterceptor } from './http/request-id.interceptor';
 export { EventLogInterceptor } from './http/event-log.interceptor';
 export {

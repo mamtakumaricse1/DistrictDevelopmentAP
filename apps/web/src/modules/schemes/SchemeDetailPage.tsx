@@ -1,16 +1,26 @@
-import { Button, LinearProgress, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
+import { Button, FormControl, FormHelperText, InputLabel, LinearProgress, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusChip } from '../../components/StatusChip';
 import { formatNumber, formatPercent, formatRupees } from '../../lib/rag';
-import { kpiProgressSchema } from '../../lib/validation';
+import { periodYmSchema } from '../../lib/validation';
 import { adminApi } from '../../services/api/admin';
 import { schemesApi } from '../../services/api/schemes';
 import { locationName } from '../administration/panels/labels';
-import { ErrorAlert, FormDialog } from '../administration/panels/shared';
+import { ErrorAlert, FormDialog, fieldState, selectError } from '../administration/panels/shared';
+
+const kpiFormSchema = z.object({
+  kpiId: z.string().min(1, 'Select a KPI.'),
+  periodYm: periodYmSchema,
+  target: z.coerce.number({ invalid_type_error: 'Enter a target.' }).min(0, 'Target must be 0 or more.'),
+  achievement: z.coerce.number({ invalid_type_error: 'Enter the achievement.' }).min(0, 'Achievement must be 0 or more.'),
+});
 
 export function SchemeDetailPage() {
   const { id = '' } = useParams();
@@ -21,28 +31,18 @@ export function SchemeDetailPage() {
   const locations = useQuery({ queryKey: ['admin', 'locations'], queryFn: () => adminApi.locations() });
   const row = scheme.data;
   const [open, setOpen] = useState(false);
-  const [kpiId, setKpiId] = useState('');
-  const [periodYm, setPeriodYm] = useState('2026-09');
-  const [target, setTarget] = useState('');
-  const [achievement, setAchievement] = useState('');
+  const form = useForm<z.infer<typeof kpiFormSchema>>({
+    resolver: zodResolver(kpiFormSchema),
+    defaultValues: { kpiId: '', periodYm: '2026-09', target: 0, achievement: 0 },
+  });
   const submit = useMutation({
-    mutationFn: () => {
-      const physical = Number(target) > 0 ? Math.round((Number(achievement) / Number(target)) * 1000) / 10 : 0;
-      const parsed = kpiProgressSchema.safeParse({
-        kpiId,
-        periodYm,
-        target,
-        achievement,
-        physicalPercent: physical,
-      });
-      if (!parsed.success) {
-        throw new Error(parsed.error.issues[0]?.message ?? 'Check the KPI form.');
-      }
-      return schemesApi.submitKpiProgress(parsed.data.kpiId, {
-        periodYm: parsed.data.periodYm,
-        target: parsed.data.target,
-        achievement: parsed.data.achievement,
-        physicalPercent: parsed.data.physicalPercent,
+    mutationFn: (values: z.infer<typeof kpiFormSchema>) => {
+      const physical = values.target > 0 ? Math.round((values.achievement / values.target) * 1000) / 10 : 0;
+      return schemesApi.submitKpiProgress(values.kpiId, {
+        periodYm: values.periodYm,
+        target: values.target,
+        achievement: values.achievement,
+        physicalPercent: Math.min(physical, 100),
       });
     },
     onSuccess: async () => {
@@ -123,23 +123,32 @@ export function SchemeDetailPage() {
           </TableBody>
         </Table>
       </Stack>
-      <FormDialog title="Submit KPI progress" open={open} onClose={() => setOpen(false)} onSubmit={() => submit.mutate()}>
-        <TextField
-          select
-          label="KPI"
-          value={kpiId}
-          onChange={(event) => setKpiId(event.target.value)}
-          required
-        >
-          {(row?.kpis ?? []).map((kpi) => (
-            <MenuItem key={kpi.id} value={kpi.id}>
-              {kpi.name}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField label="Period YYYY-MM" value={periodYm} onChange={(event) => setPeriodYm(event.target.value)} required />
-        <TextField label="Target" type="number" value={target} onChange={(event) => setTarget(event.target.value)} required />
-        <TextField label="Achievement" type="number" value={achievement} onChange={(event) => setAchievement(event.target.value)} required />
+      <FormDialog
+        title="Submit KPI progress"
+        open={open}
+        onClose={() => setOpen(false)}
+        error={submit.error}
+        onSubmit={form.handleSubmit((values) => submit.mutate(values))}
+      >
+        <FormControl fullWidth error={Boolean(selectError(form, 'kpiId'))}>
+          <InputLabel id="kpi-select">KPI</InputLabel>
+          <Select
+            labelId="kpi-select"
+            label="KPI"
+            value={form.watch('kpiId')}
+            onChange={(event) => form.setValue('kpiId', event.target.value, { shouldValidate: true })}
+          >
+            {(row?.kpis ?? []).map((kpi) => (
+              <MenuItem key={kpi.id} value={kpi.id}>
+                {kpi.name}
+              </MenuItem>
+            ))}
+          </Select>
+          {selectError(form, 'kpiId') ? <FormHelperText>{selectError(form, 'kpiId')}</FormHelperText> : null}
+        </FormControl>
+        <TextField label="Period YYYY-MM" required {...fieldState(form, 'periodYm')} />
+        <TextField label="Target" type="number" required {...fieldState(form, 'target')} />
+        <TextField label="Achievement" type="number" required {...fieldState(form, 'achievement')} />
       </FormDialog>
     </>
   );

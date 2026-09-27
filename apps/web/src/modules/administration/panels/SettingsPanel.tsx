@@ -20,7 +20,7 @@ import { z } from 'zod';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi } from '../../../services/api/admin';
 import { districtName } from './labels';
-import { ErrorAlert, FormDialog } from './shared';
+import { ErrorAlert, FormDialog, fieldState } from './shared';
 
 const schema = z.object({
   districtId: z.string().optional(),
@@ -87,6 +87,7 @@ export function SettingsPanel() {
         open={open}
         onClose={() => setOpen(false)}
         onSubmit={form.handleSubmit((values) => upsert.mutate(values))}
+        error={upsert.error}
       >
         <FormControl fullWidth>
           <InputLabel id="setting-district">Scope</InputLabel>
@@ -104,8 +105,8 @@ export function SettingsPanel() {
             ))}
           </Select>
         </FormControl>
-        <TextField label="Key" {...form.register('key')} required />
-        <TextField label="Value" {...form.register('value')} required />
+        <TextField label="Key" required {...fieldState(form, 'key')} />
+        <TextField label="Value" required {...fieldState(form, 'value')} />
         <FormControl fullWidth>
           <InputLabel id="setting-type">Type</InputLabel>
           <Select

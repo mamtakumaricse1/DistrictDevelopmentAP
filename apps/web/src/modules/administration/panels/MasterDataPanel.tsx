@@ -1,6 +1,7 @@
 import {
   Button,
   FormControl,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Select,
@@ -21,7 +22,7 @@ import { UUID_LIKE } from '../../../lib/ids';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi } from '../../../services/api/admin';
 import { districtName } from './labels';
-import { ErrorAlert, FormDialog } from './shared';
+import { ErrorAlert, FormDialog, fieldState, selectError } from './shared';
 
 const categorySchema = z.object({
   code: z.string().min(2).max(64),
@@ -29,7 +30,7 @@ const categorySchema = z.object({
 });
 
 const itemSchema = z.object({
-  categoryId: z.string().regex(UUID_LIKE, 'Must be a UUID'),
+  categoryId: z.string().regex(UUID_LIKE, 'Select a category.'),
   districtId: z.string().optional(),
   code: z.string().min(1).max(64),
   name: z.string().min(1).max(200),
@@ -113,9 +114,10 @@ export function MasterDataPanel() {
         open={categoryOpen}
         onClose={() => setCategoryOpen(false)}
         onSubmit={categoryForm.handleSubmit((values) => createCategory.mutate(values))}
+        error={createCategory.error}
       >
-        <TextField label="Code" {...categoryForm.register('code')} required />
-        <TextField label="Name" {...categoryForm.register('name')} required />
+        <TextField label="Code" required {...fieldState(categoryForm, 'code')} />
+        <TextField label="Name" required {...fieldState(categoryForm, 'name')} />
       </FormDialog>
 
       <FormDialog
@@ -123,8 +125,9 @@ export function MasterDataPanel() {
         open={itemOpen}
         onClose={() => setItemOpen(false)}
         onSubmit={itemForm.handleSubmit((values) => createItem.mutate(values))}
+        error={createItem.error}
       >
-        <FormControl fullWidth>
+        <FormControl fullWidth error={Boolean(selectError(itemForm, 'categoryId'))}>
           <InputLabel id="item-category">Category</InputLabel>
           <Select
             labelId="item-category"
@@ -138,6 +141,7 @@ export function MasterDataPanel() {
               </MenuItem>
             ))}
           </Select>
+          {selectError(itemForm, 'categoryId') ? <FormHelperText>{selectError(itemForm, 'categoryId')}</FormHelperText> : null}
         </FormControl>
         <FormControl fullWidth>
           <InputLabel id="item-district">District scope</InputLabel>
@@ -155,9 +159,9 @@ export function MasterDataPanel() {
             ))}
           </Select>
         </FormControl>
-        <TextField label="Code" {...itemForm.register('code')} required />
-        <TextField label="Name" {...itemForm.register('name')} required />
-        <TextField label="Sort order" type="number" {...itemForm.register('sortOrder')} />
+        <TextField label="Code" required {...fieldState(itemForm, 'code')} />
+        <TextField label="Name" required {...fieldState(itemForm, 'name')} />
+        <TextField label="Sort order" type="number" {...fieldState(itemForm, 'sortOrder')} />
       </FormDialog>
     </Stack>
   );

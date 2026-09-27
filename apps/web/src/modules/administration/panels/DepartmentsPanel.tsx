@@ -2,6 +2,7 @@ import {
   Button,
   FormControl,
   FormControlLabel,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Select,
@@ -23,10 +24,10 @@ import { UUID_LIKE } from '../../../lib/ids';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi, type DepartmentRecord } from '../../../services/api/admin';
 import { districtName } from './labels';
-import { ErrorAlert, FormDialog } from './shared';
+import { ErrorAlert, FormDialog, fieldState, selectError } from './shared';
 
 const schema = z.object({
-  districtId: z.string().regex(UUID_LIKE, 'Must be a UUID'),
+  districtId: z.string().regex(UUID_LIKE, 'Select a district.'),
   code: z.string().min(2).max(32),
   name: z.string().min(2).max(200),
   shortName: z.string().max(50).optional(),
@@ -42,6 +43,7 @@ export function DepartmentsPanel() {
   const departments = useQuery({ queryKey: ['admin', 'departments'], queryFn: () => adminApi.departments() });
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<DepartmentRecord | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const defaultDistrictId = profile?.isSuperAdmin ? '' : (profile?.districtIds[0] ?? '');
 
   const form = useForm<z.infer<typeof schema>>({
@@ -108,14 +110,15 @@ export function DepartmentsPanel() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSubmit={form.handleSubmit((values) => create.mutate(values))}
+        error={create.error}
       >
-        <FormControl fullWidth>
+        <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
           <InputLabel id="dept-district">District</InputLabel>
           <Select
             labelId="dept-district"
             label="District"
             value={form.watch('districtId')}
-            onChange={(event) => form.setValue('districtId', event.target.value)}
+            onChange={(event) => form.setValue('districtId', event.target.value, { shouldValidate: true })}
           >
             {(districts.data ?? []).map((district) => (
               <MenuItem key={district.id} value={district.id}>
@@ -123,22 +126,38 @@ export function DepartmentsPanel() {
               </MenuItem>
             ))}
           </Select>
+          {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
         </FormControl>
-        <TextField label="Code" {...form.register('code')} required />
-        <TextField label="Name" {...form.register('name')} required />
-        <TextField label="Short name" {...form.register('shortName')} />
-        <TextField label="HoD / officer" {...form.register('hodName')} />
-        <TextField label="HoD contact" {...form.register('hodContact')} />
+        <TextField label="Code" required {...fieldState(form, 'code')} />
+        <TextField label="Name" required {...fieldState(form, 'name')} />
+        <TextField label="Short name" {...fieldState(form, 'shortName')} />
+        <TextField label="HoD / officer" {...fieldState(form, 'hodName')} />
+        <TextField label="HoD contact" {...fieldState(form, 'hodContact')} />
       </FormDialog>
 
       <FormDialog
         title="Edit department"
         open={Boolean(editing)}
-        onClose={() => setEditing(null)}
+        onClose={() => {
+          setEditing(null);
+          setEditError(null);
+        }}
+        error={editError ?? update.error}
         onSubmit={() => {
           if (!editing) {
             return;
           }
+          const parsed = schema.pick({ name: true, shortName: true, hodName: true, hodContact: true }).safeParse({
+            name: editing.name,
+            shortName: editing.shortName ?? '',
+            hodName: editing.hodName ?? '',
+            hodContact: editing.hodContact ?? '',
+          });
+          if (!parsed.success) {
+            setEditError(parsed.error.issues[0]?.message ?? 'Check the form and try again.');
+            return;
+          }
+          setEditError(null);
           update.mutate({
             id: editing.id,
             body: {

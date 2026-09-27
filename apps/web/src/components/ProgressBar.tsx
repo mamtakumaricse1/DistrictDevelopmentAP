@@ -20,13 +20,13 @@ export function ProgressBar({ value, label }: ProgressBarProps) {
       <Box
         sx={{
           flex: 1,
-          height: 10,
-          borderRadius: 1,
-          bgcolor: 'action.hover',
+          height: 8,
+          borderRadius: 99,
+          bgcolor: '#E7E0D2',
           overflow: 'hidden',
         }}
       >
-        <Box sx={{ width: `${width}%`, height: '100%', bgcolor: COLORS[status] }} />
+        <Box sx={{ width: `${width}%`, height: '100%', bgcolor: COLORS[status], borderRadius: 99 }} />
       </Box>
       <Typography variant="caption" sx={{ minWidth: 40 }}>
         {label ?? `${width}%`}

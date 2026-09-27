@@ -1,8 +1,11 @@
-import { Card, CardContent, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import { Card, Stack, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
+import { govColors } from '../../app/theme';
+import { KpiCard } from '../../components/KpiCard';
 import { PageHeader } from '../../components/PageHeader';
 import { ProgressBar } from '../../components/ProgressBar';
+import { SectionHeading } from '../../components/SectionHeading';
 import { StatusChip } from '../../components/StatusChip';
 import { formatNumber, formatPercent, formatRupees } from '../../lib/rag';
 import { adminApi } from '../../services/api/admin';
@@ -26,34 +29,14 @@ export function DepartmentDashboardPage() {
         title={department?.name ?? departmentName(departments.data ?? [], departmentId)}
         description={`${department?.hodName ?? 'HoD not set'}${department?.hodContact ? ` · ${department.hodContact}` : ''}. Scheme → KPI → block → village.`}
       />
-      <Stack spacing={2}>
+      <Stack spacing={2.5}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <Card sx={{ flex: 1 }}>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                Physical
-              </Typography>
-              <Typography variant="h2">{formatPercent(data.data?.totals.physicalProgress)}</Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ flex: 1 }}>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                Financial
-              </Typography>
-              <Typography variant="h2">{formatPercent(data.data?.totals.financialProgress)}</Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ flex: 1 }}>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                Delayed
-              </Typography>
-              <Typography variant="h2">{data.data?.totals.delayed ?? 0}</Typography>
-            </CardContent>
-          </Card>
+          <KpiCard label="Physical" value={formatPercent(data.data?.totals.physicalProgress)} accent="#1B7A4E" large />
+          <KpiCard label="Financial" value={formatPercent(data.data?.totals.financialProgress)} accent={govColors.saffron} large />
+          <KpiCard label="Delayed" value={String(data.data?.totals.delayed ?? 0)} accent="#B42318" valueColor="error.main" large />
         </Stack>
-        <Typography variant="h3">Schemes</Typography>
+        <SectionHeading title="Schemes" />
+        <Card sx={{ overflow: 'hidden' }}>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -82,7 +65,9 @@ export function DepartmentDashboardPage() {
             ))}
           </TableBody>
         </Table>
-        <Typography variant="h3">Projects</Typography>
+        </Card>
+        <SectionHeading title="Projects" />
+        <Card sx={{ overflow: 'hidden' }}>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -110,6 +95,7 @@ export function DepartmentDashboardPage() {
             ))}
           </TableBody>
         </Table>
+        </Card>
       </Stack>
     </>
   );

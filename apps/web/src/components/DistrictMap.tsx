@@ -22,7 +22,7 @@ export function DistrictMap({ locations, mapPoints = [], height = 320 }: Distric
   const counts = new Map(mapPoints.map((point) => [point.locationId, point]));
 
   return (
-    <Box sx={{ height, border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
+    <Box sx={{ height, overflow: 'hidden' }}>
       <MapContainer center={center} zoom={9} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
@@ -35,7 +35,7 @@ export function DistrictMap({ locations, mapPoints = [], height = 320 }: Distric
               key={block.id}
               center={[Number(block.latitude), Number(block.longitude)]}
               radius={11}
-              pathOptions={{ color: '#0B3D4A', fillColor: '#1A5A6B', fillOpacity: 0.85 }}
+              pathOptions={{ color: '#0B2C4A', fillColor: '#1A4A73', fillOpacity: 0.85 }}
               eventHandlers={{ click: () => navigate(`/blocks/${block.id}`) }}
             >
               <Popup>

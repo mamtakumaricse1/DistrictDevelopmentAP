@@ -17,7 +17,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi, type DistrictRecord } from '../../../services/api/admin';
-import { ErrorAlert, FormDialog } from './shared';
+import { ErrorAlert, FormDialog, fieldState } from './shared';
 
 const schema = z.object({
   code: z.string().min(2).max(32),
@@ -38,6 +38,7 @@ export function DistrictsPanel() {
   const districts = useQuery({ queryKey: ['admin', 'districts'], queryFn: adminApi.districts });
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<DistrictRecord | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const createForm = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -107,24 +108,40 @@ export function DistrictsPanel() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSubmit={createForm.handleSubmit((values) => create.mutate(values))}
+        error={create.error}
       >
-        <TextField label="Code" {...createForm.register('code')} required helperText="Unique district code, not a hardcoded name in source." />
-        <TextField label="Name" {...createForm.register('name')} required />
-        <TextField label="State code" {...createForm.register('stateCode')} required />
-        <TextField label="State name" {...createForm.register('stateName')} required />
-        <TextField label="Headquarters" {...createForm.register('headquarters')} />
-        <TextField label="Keycloak realm" {...createForm.register('keycloakRealm')} />
-        <TextField label="Keycloak issuer URL" {...createForm.register('keycloakIssuer')} />
+        <TextField label="Code" required helperText="Unique district code, not a hardcoded name in source." {...fieldState(createForm, 'code')} />
+        <TextField label="Name" required {...fieldState(createForm, 'name')} />
+        <TextField label="State code" required {...fieldState(createForm, 'stateCode')} />
+        <TextField label="State name" required {...fieldState(createForm, 'stateName')} />
+        <TextField label="Headquarters" {...fieldState(createForm, 'headquarters')} />
+        <TextField label="Keycloak realm" {...fieldState(createForm, 'keycloakRealm')} />
+        <TextField label="Keycloak issuer URL" {...fieldState(createForm, 'keycloakIssuer')} />
       </FormDialog>
 
       <FormDialog
         title="Edit district"
         open={Boolean(editing)}
-        onClose={() => setEditing(null)}
+        onClose={() => {
+          setEditing(null);
+          setEditError(null);
+        }}
+        error={editError ?? update.error}
         onSubmit={() => {
           if (!editing) {
             return;
           }
+          const parsed = schema.pick({ name: true, headquarters: true, keycloakRealm: true, keycloakIssuer: true }).safeParse({
+            name: editing.name,
+            headquarters: editing.headquarters ?? '',
+            keycloakRealm: editing.keycloakRealm ?? '',
+            keycloakIssuer: editing.keycloakIssuer ?? '',
+          });
+          if (!parsed.success) {
+            setEditError(parsed.error.issues[0]?.message ?? 'Check the form and try again.');
+            return;
+          }
+          setEditError(null);
           update.mutate({
             id: editing.id,
             body: {

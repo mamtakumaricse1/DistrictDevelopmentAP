@@ -48,7 +48,7 @@ export class UsersService {
     }
     if (dto.roleCode !== 'SUPER_ADMIN') {
       if (!dto.districtId) {
-        throw new BadRequestException('districtId is required for this role.');
+        throw new BadRequestException('Select a district for this role.');
       }
       this.authz.assertDistrictAccess(auth, dto.districtId);
     }

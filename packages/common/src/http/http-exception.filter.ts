@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { actorFromRequest, entityIdFromPath, eventName, formatEventLog, requestPath, shouldLogFailure } from './event-log';
+import { friendlyValidationLine, publicErrorMessage } from './friendly-error';
 
 type ErrorBody = {
   error: {
@@ -40,15 +41,27 @@ export class HttpExceptionFilter implements ExceptionFilter {
       if (typeof payload === 'string') {
         message = payload;
       } else if (typeof payload === 'object' && payload !== null) {
-        const body = payload as { message?: string | string[]; error?: string };
+        const body = payload as { message?: string | string[]; error?: string; details?: unknown[] };
+        if (Array.isArray(body.details)) {
+          details = body.details.filter((item): item is string => typeof item === 'string').map((item) => friendlyValidationLine(item));
+        }
         if (Array.isArray(body.message)) {
-          message = 'Validation failed.';
-          details = body.message;
+          const lines = body.message.map((item) => friendlyValidationLine(item));
+          details = lines;
+          message = lines[0] ?? 'Check the form and try again.';
           code = 'VALIDATION_ERROR';
         } else if (typeof body.message === 'string') {
-          message = body.message;
+          message = publicErrorMessage(status, body.message);
+          if (status === HttpStatus.BAD_REQUEST) {
+            code = 'VALIDATION_ERROR';
+          }
         }
       }
+    }
+
+    message = publicErrorMessage(status, message);
+    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      details = [];
     }
 
     this.logFailure(request, status, exception);
