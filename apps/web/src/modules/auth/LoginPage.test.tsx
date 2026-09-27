@@ -36,7 +36,8 @@ describe('LoginPage', () => {
         </ThemeProvider>
       </QueryClientProvider>,
     );
-    expect(await screen.findByText('Changlang')).toBeInTheDocument();
-    expect(screen.getByText('Realm changlang')).toBeInTheDocument();
+    expect(await screen.findByText('Changlang officers')).toBeInTheDocument();
+    expect(screen.getByText(/Realm changlang/)).toBeInTheDocument();
+    expect(screen.getByText('Citizen / public view')).toBeInTheDocument();
   });
 });

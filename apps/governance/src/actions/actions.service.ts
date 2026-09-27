@@ -60,6 +60,11 @@ export class ActionsService {
         description: dto.description?.trim(),
         assigneeUserId: dto.assigneeUserId,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+        dcDirection: dto.dcDirection?.trim(),
+        officerName: dto.officerName?.trim(),
+        locationText: dto.locationText?.trim(),
+        severity: dto.severity,
+        nextReviewAt: dto.nextReviewAt ? new Date(dto.nextReviewAt) : undefined,
         createdById: auth.userId,
         updatedById: auth.userId,
       },
@@ -98,6 +103,12 @@ export class ActionsService {
         description: dto.description === undefined ? undefined : dto.description?.trim() ?? null,
         status: dto.status,
         dueDate: dto.dueDate === undefined ? undefined : dto.dueDate ? new Date(dto.dueDate) : null,
+        dcDirection: dto.dcDirection === undefined ? undefined : dto.dcDirection?.trim() ?? null,
+        officerName: dto.officerName === undefined ? undefined : dto.officerName?.trim() ?? null,
+        locationText: dto.locationText === undefined ? undefined : dto.locationText?.trim() ?? null,
+        severity: dto.severity,
+        nextReviewAt:
+          dto.nextReviewAt === undefined ? undefined : dto.nextReviewAt ? new Date(dto.nextReviewAt) : null,
         updatedById: auth.userId,
       },
     });
@@ -113,27 +124,59 @@ export class ActionsService {
       ...(districtIds ? { districtId: { in: districtIds } } : {}),
       ...(departmentIds ? { OR: [{ departmentId: { in: departmentIds } }, { departmentId: null }] } : {}),
     };
-    const [open, done, meetings] = await Promise.all([
+    const meetingWhere = {
+      isActive: true,
+      ...(districtIds ? { districtId: { in: districtIds } } : {}),
+    };
+    const [open, done, meetings, immediate, attention, nextMeeting] = await Promise.all([
       this.prisma.actionItem.count({ where: { ...where, status: { not: ActionStatus.DONE } } }),
       this.prisma.actionItem.count({ where: { ...where, status: ActionStatus.DONE } }),
-      this.prisma.reviewMeeting.count({
-        where: {
-          isActive: true,
-          ...(districtIds ? { districtId: { in: districtIds } } : {}),
-        },
+      this.prisma.reviewMeeting.count({ where: meetingWhere }),
+      this.prisma.actionItem.count({
+        where: { ...where, status: { not: ActionStatus.DONE }, severity: 'IMMEDIATE' },
+      }),
+      this.prisma.actionItem.count({
+        where: { ...where, status: { not: ActionStatus.DONE }, severity: 'ATTENTION' },
+      }),
+      this.prisma.reviewMeeting.findFirst({
+        where: meetingWhere,
+        orderBy: { scheduledAt: 'desc' },
+        select: { id: true, title: true, scheduledAt: true, nextReviewAt: true },
       }),
     ]);
-    return { openActions: open, doneActions: done, meetings };
+    return { openActions: open, doneActions: done, meetings, immediate, attention, nextMeeting };
   }
 
   csv(auth: AuthContext) {
     this.authz.assertPermission(auth, 'report:export');
     return this.list(auth, {}).then((rows) => {
-      const header = ['title', 'districtId', 'departmentId', 'status', 'dueDate', 'isOverdue'];
+      const header = [
+        'issueId',
+        'departmentId',
+        'issue',
+        'location',
+        'officer',
+        'dateRaised',
+        'deadline',
+        'status',
+        'dcDirection',
+        'remarks',
+      ];
       const lines = [
         header.join(','),
         ...rows.map((row) =>
-          [row.title, row.districtId, row.departmentId ?? '', row.status, row.dueDate ?? '', row.isOverdue].join(','),
+          [
+            row.id,
+            row.departmentId ?? '',
+            row.title,
+            row.locationText ?? '',
+            row.officerName ?? '',
+            row.createdAt,
+            row.dueDate ?? '',
+            row.status,
+            row.dcDirection ?? '',
+            row.description ?? '',
+          ].join(','),
         ),
       ];
       return lines.join('\n');
@@ -147,15 +190,21 @@ export class ActionsService {
     throw new ForbiddenException('You are not allowed to perform this action.');
   }
 
-  private serialize<T extends { dueDate: Date | null; status: ActionStatus }>(row: T) {
+  private serialize<T extends { dueDate: Date | null; createdAt?: Date; status: ActionStatus; nextReviewAt?: Date | null }>(
+    row: T,
+  ) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const isOverdue =
       row.status !== ActionStatus.DONE && row.dueDate !== null && row.dueDate.getTime() < today.getTime();
+    const raised = row.createdAt ?? today;
+    const daysPending = Math.max(0, Math.floor((today.getTime() - new Date(raised).getTime()) / 86_400_000));
     return {
       ...row,
       dueDate: row.dueDate ? row.dueDate.toISOString().slice(0, 10) : null,
+      nextReviewAt: row.nextReviewAt ? row.nextReviewAt.toISOString().slice(0, 10) : null,
       isOverdue,
+      daysPending,
     };
   }
 }

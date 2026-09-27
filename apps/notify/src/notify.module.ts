@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import {
   AuthCoreModule,
+  EventLogInterceptor,
   HealthModule,
   HttpExceptionFilter,
   RemoteDistrictIssuerStore,
@@ -26,6 +27,7 @@ import { PrismaModule } from './prisma/prisma.module';
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: RequestIdInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: EventLogInterceptor },
   ],
 })
 export class NotifyModule {}

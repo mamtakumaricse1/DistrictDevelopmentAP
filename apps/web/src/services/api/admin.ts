@@ -7,6 +7,7 @@ export type DistrictRecord = {
   stateCode: string;
   stateName: string;
   headquarters: string | null;
+  population?: number | null;
   timezone: string;
   isActive: boolean;
   keycloakRealm: string | null;
@@ -19,6 +20,21 @@ export type DepartmentRecord = {
   code: string;
   name: string;
   shortName: string | null;
+  hodName?: string | null;
+  hodContact?: string | null;
+  isActive: boolean;
+};
+
+export type LocationRecord = {
+  id: string;
+  districtId: string;
+  parentId: string | null;
+  type: 'BLOCK' | 'CIRCLE' | 'GRAM_PANCHAYAT' | 'VILLAGE';
+  code: string;
+  name: string;
+  population: number | null;
+  latitude: string | number | null;
+  longitude: string | number | null;
   isActive: boolean;
 };
 
@@ -77,6 +93,13 @@ export type SettingRecord = {
 const inactive = 'includeInactive=true';
 
 export const adminApi = {
+  locations: (districtId?: string, type?: string) =>
+    apiGet<LocationRecord[]>(
+      `/locations?${districtId ? `districtId=${districtId}` : ''}${type ? `${districtId ? '&' : ''}type=${type}` : ''}`,
+    ),
+  createLocation: (body: unknown) => apiPost<LocationRecord>('/locations', body),
+  updateLocation: (id: string, body: unknown) => apiPatch<LocationRecord>(`/locations/${id}`, body),
+
   districts: () => apiGet<DistrictRecord[]>(`/districts?${inactive}`),
   createDistrict: (body: unknown) => apiPost<DistrictRecord>('/districts', body),
   updateDistrict: (id: string, body: unknown) => apiPatch<DistrictRecord>(`/districts/${id}`, body),

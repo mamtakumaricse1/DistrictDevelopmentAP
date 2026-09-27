@@ -14,6 +14,11 @@ Work **one phase at a time** when starting new work. Phases 0–9 below are the 
 | 7 | Review meetings and actions | Done |
 | 8 | Notifications | Done |
 | 9 | Reports and export | Done |
+| 10 | Geography, officers, Changlang location seed | Done |
+| 11 | Scheme / KPI / beneficiary + CSV ingest | Done |
+| 12 | DC review extras + ADC / BDO / DATA_ENTRY | Done |
+| 13 | DC decision APIs (home, dept, scheme, block, infra, HD) | Done |
+| 14 | DC frontend modules + GIS | Done |
 
 ## Phase 5–9 gates
 

@@ -15,6 +15,7 @@ export class CreateDepartmentDto {
 
   @ApiProperty()
   @IsString()
+  @MinLength(2)
   @MaxLength(200)
   name!: string;
 
@@ -23,6 +24,18 @@ export class CreateDepartmentDto {
   @IsString()
   @MaxLength(50)
   shortName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  hodName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  hodContact?: string;
 }
 
 export class UpdateDepartmentDto {
@@ -37,6 +50,18 @@ export class UpdateDepartmentDto {
   @IsString()
   @MaxLength(50)
   shortName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  hodName?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  hodContact?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

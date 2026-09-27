@@ -1,10 +1,11 @@
-import { Button, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField } from '@mui/material';
+import { Button, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusChip } from '../../components/StatusChip';
 import { isUuidLike } from '../../lib/ids';
+import { actionCreateSchema } from '../../lib/validation';
 import { adminApi } from '../../services/api/admin';
 import { governanceApi } from '../../services/api/governance';
 import { ErrorAlert, FormDialog } from '../administration/panels/shared';
@@ -23,6 +24,10 @@ export function ActionsPage() {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('2026-09-30');
   const [districtId, setDistrictId] = useState('');
+  const [officerName, setOfficerName] = useState('');
+  const [locationText, setLocationText] = useState('');
+  const [dcDirection, setDcDirection] = useState('');
+  const [severity, setSeverity] = useState<'IMMEDIATE' | 'ATTENTION' | 'ROUTINE'>('IMMEDIATE');
 
   const districtOptions = useMemo(() => {
     const rows = districts.data ?? [];
@@ -45,22 +50,31 @@ export function ActionsPage() {
 
   const create = useMutation({
     mutationFn: () => {
-      if (!isUuidLike(districtId)) {
-        throw new Error('Select a district before saving the action.');
-      }
-      if (title.trim().length < 3) {
-        throw new Error('Title must be at least 3 characters.');
+      const parsed = actionCreateSchema.safeParse({
+        districtId,
+        title,
+        dueDate,
+        officerName,
+        locationText,
+        dcDirection,
+        severity,
+      });
+      if (!parsed.success) {
+        throw new Error(parsed.error.issues[0]?.message ?? 'Check the form.');
       }
       return governanceApi.createAction({
-        districtId,
-        title: title.trim(),
-        dueDate: dueDate || undefined,
+        ...parsed.data,
+        departmentId: parsed.data.departmentId || undefined,
+        dueDate: parsed.data.dueDate || undefined,
       });
     },
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ['actions'] });
       setOpen(false);
       setTitle('');
+      setOfficerName('');
+      setLocationText('');
+      setDcDirection('');
     },
   });
 
@@ -73,7 +87,7 @@ export function ActionsPage() {
 
   return (
     <>
-      <PageHeader title="Action tracker" description="Review actions stay in Governance. Status updates do not delete history rows." />
+      <PageHeader title="Action tracker" description="DC directions, officers, and deadlines. Status updates do not delete history rows." />
       <Stack spacing={2}>
         <ErrorAlert error={actions.error ?? create.error ?? update.error} />
         {canManage ? (
@@ -84,8 +98,11 @@ export function ActionsPage() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Title</TableCell>
+              <TableCell>Issue / direction</TableCell>
+              <TableCell>Officer</TableCell>
+              <TableCell>Location</TableCell>
               <TableCell>Due</TableCell>
+              <TableCell>Severity</TableCell>
               <TableCell>Status</TableCell>
               <TableCell />
             </TableRow>
@@ -93,8 +110,20 @@ export function ActionsPage() {
           <TableBody>
             {(actions.data ?? []).map((row) => (
               <TableRow key={row.id}>
-                <TableCell>{row.title}</TableCell>
+                <TableCell>
+                  {row.title}
+                  {row.dcDirection ? (
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      {row.dcDirection}
+                    </Typography>
+                  ) : null}
+                </TableCell>
+                <TableCell>{row.officerName ?? '—'}</TableCell>
+                <TableCell>{row.locationText ?? '—'}</TableCell>
                 <TableCell>{row.isOverdue ? `${row.dueDate ?? '—'} (overdue)` : (row.dueDate ?? '—')}</TableCell>
+                <TableCell>
+                  <StatusChip status={row.severity ?? 'ROUTINE'} />
+                </TableCell>
                 <TableCell>
                   <StatusChip status={row.isOverdue && row.status !== 'DONE' ? 'OVERDUE' : row.status} />
                 </TableCell>
@@ -129,6 +158,14 @@ export function ActionsPage() {
           ))}
         </TextField>
         <TextField label="Title" value={title} onChange={(event) => setTitle(event.target.value)} required />
+        <TextField label="Officer" value={officerName} onChange={(event) => setOfficerName(event.target.value)} />
+        <TextField label="Location" value={locationText} onChange={(event) => setLocationText(event.target.value)} />
+        <TextField label="DC direction" multiline minRows={2} value={dcDirection} onChange={(event) => setDcDirection(event.target.value)} />
+        <TextField select label="Severity" value={severity} onChange={(event) => setSeverity(event.target.value as typeof severity)}>
+          <MenuItem value="IMMEDIATE">Immediate</MenuItem>
+          <MenuItem value="ATTENTION">Attention</MenuItem>
+          <MenuItem value="ROUTINE">Routine</MenuItem>
+        </TextField>
         <TextField label="Due date" type="date" InputLabelProps={{ shrink: true }} value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
       </FormDialog>
     </>

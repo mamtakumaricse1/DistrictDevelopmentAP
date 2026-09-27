@@ -36,6 +36,7 @@ vi.mock('../../services/api/admin', () => ({
       },
     ],
     departments: async () => [],
+    locations: async () => [],
     agencies: async () => [],
     users: async () => [],
     roles: async () => [],

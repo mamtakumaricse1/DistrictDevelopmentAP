@@ -26,7 +26,7 @@
 | --- | --- |
 | D2 | Public hostnames for UAT/prod and Keycloak |
 | D4 | Who operates SUPER_ADMIN (NIC / State IT) |
-| D7 | Changlang location hierarchy seed |
+| D7 | Changlang location hierarchy seed — **locked in Phase 10** (blocks + sample villages with coordinates) |
 | D8 | Languages (English first) |
 | D9 | Email/SMS gateway |
 | D10 | Backup target volume |

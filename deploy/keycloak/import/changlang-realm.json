@@ -53,8 +53,35 @@
       "email": "da.changlang@ddwmd.local",
       "enabled": true,
       "emailVerified": true,
-      "firstName": "Changlang",
-      "lastName": "District Admin",
+      "firstName": "DC",
+      "lastName": "Changlang",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "adc.changlang",
+      "email": "adc.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "ADC",
+      "lastName": "Changlang",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "dio.changlang",
+      "email": "dio.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "DIO",
+      "lastName": "Changlang",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "bdo.changlang",
+      "email": "bdo.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "BDO",
+      "lastName": "Changlang",
       "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
     },
     {
@@ -62,7 +89,115 @@
       "email": "pwd.changlang@ddwmd.local",
       "enabled": true,
       "emailVerified": true,
-      "firstName": "Changlang",
+      "firstName": "HoD",
+      "lastName": "PWD",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "rwd.changlang",
+      "email": "rwd.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "HoD",
+      "lastName": "RWD",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "phed.changlang",
+      "email": "phed.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "HoD",
+      "lastName": "PHED",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "edu.changlang",
+      "email": "edu.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "HoD",
+      "lastName": "Education",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "hlt.changlang",
+      "email": "hlt.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "HoD",
+      "lastName": "Health",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "rd.changlang",
+      "email": "rd.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "HoD",
+      "lastName": "RD",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "agr.changlang",
+      "email": "agr.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "HoD",
+      "lastName": "Agriculture",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "sw.changlang",
+      "email": "sw.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "HoD",
+      "lastName": "Social Welfare",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "ud.changlang",
+      "email": "ud.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "HoD",
+      "lastName": "UD",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "fcs.changlang",
+      "email": "fcs.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "HoD",
+      "lastName": "FCS",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "trn.changlang",
+      "email": "trn.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "HoD",
+      "lastName": "Transport",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "pwr.changlang",
+      "email": "pwr.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "HoD",
+      "lastName": "Power",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "data.pwd.changlang",
+      "email": "data.pwd.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Data Entry",
       "lastName": "PWD",
       "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
     },
@@ -71,8 +206,17 @@
       "email": "viewer.changlang@ddwmd.local",
       "enabled": true,
       "emailVerified": true,
-      "firstName": "Changlang",
-      "lastName": "Viewer",
+      "firstName": "Viewer",
+      "lastName": "Changlang",
+      "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
+    },
+    {
+      "username": "citizen.changlang",
+      "email": "citizen.changlang@ddwmd.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Citizen",
+      "lastName": "Changlang",
       "credentials": [{ "type": "password", "value": "ChangeMe!2026", "temporary": false }]
     }
   ]

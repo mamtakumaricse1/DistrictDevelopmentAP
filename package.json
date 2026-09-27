@@ -29,6 +29,9 @@
     "prisma:generate": "npm run prisma:generate -w @ddwmd/identity && npm run prisma:generate -w @ddwmd/organization && npm run prisma:generate -w @ddwmd/works && npm run prisma:generate -w @ddwmd/governance && npm run prisma:generate -w @ddwmd/notify",
     "prisma:migrate": "npm run prisma:migrate -w @ddwmd/identity && npm run prisma:migrate -w @ddwmd/organization && npm run prisma:migrate -w @ddwmd/works && npm run prisma:migrate -w @ddwmd/governance && npm run prisma:migrate -w @ddwmd/notify",
     "prisma:seed": "npm run prisma:seed -w @ddwmd/organization && npm run prisma:seed -w @ddwmd/identity && npm run prisma:seed -w @ddwmd/works && npm run prisma:seed -w @ddwmd/governance && npm run prisma:seed -w @ddwmd/notify",
+    "compose:up": "docker compose up --build -d",
+    "compose:down": "docker compose down",
+    "compose:logs": "docker compose logs -f --tail=200",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,json,md}\" \"packages/**/*.{ts,js,json,md}\""
   },
   "engines": {

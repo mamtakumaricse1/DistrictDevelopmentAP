@@ -69,8 +69,13 @@ export class GatewayService {
     ) {
       return this.governanceUrls();
     }
+    if (normalized.startsWith('reports/departments') || normalized.startsWith('reports/locations')) {
+      return this.organizationUrls();
+    }
     if (
       normalized.startsWith('projects') ||
+      normalized.startsWith('schemes') ||
+      normalized.startsWith('imports') ||
       normalized.startsWith('documents') ||
       normalized.startsWith('dashboard') ||
       normalized.startsWith('reports')
@@ -111,8 +116,13 @@ export class GatewayService {
     ) {
       return 'governance';
     }
+    if (normalized.startsWith('reports/departments') || normalized.startsWith('reports/locations')) {
+      return 'organization';
+    }
     if (
       normalized.startsWith('projects') ||
+      normalized.startsWith('schemes') ||
+      normalized.startsWith('imports') ||
       normalized.startsWith('documents') ||
       normalized.startsWith('dashboard') ||
       normalized.startsWith('reports')

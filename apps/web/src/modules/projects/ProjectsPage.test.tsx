@@ -9,9 +9,11 @@ vi.mock('../../auth/AuthProvider', () => ({
   useAuth: () => ({
     hasPermission: (permission: string) =>
       ['project:read', 'project:create', 'project:update', 'project:delete'].includes(permission),
+    isDepartmentScoped: false,
     profile: {
       isSuperAdmin: false,
       districtIds: ['11111111-1111-1111-1111-111111111111'],
+      departmentIds: [],
       issuer: 'http://localhost:8080/realms/changlang',
     },
   }),

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ArrayUnique, IsArray, IsBoolean, IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ArrayUnique, IsArray, IsBoolean, IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { IsUuidLike } from '@ddwmd/common';
 
 export class CreateUserDto {
@@ -9,6 +9,7 @@ export class CreateUserDto {
 
   @ApiProperty()
   @IsString()
+  @MinLength(2)
   @MaxLength(200)
   displayName!: string;
 

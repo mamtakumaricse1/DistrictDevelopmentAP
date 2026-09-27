@@ -19,6 +19,18 @@ export {
 export type { DistrictIssuerStore, DistrictIssuerRecord, DatabasePing } from './auth/tokens';
 export { HttpExceptionFilter } from './http/http-exception.filter';
 export { RequestIdInterceptor } from './http/request-id.interceptor';
+export { EventLogInterceptor } from './http/event-log.interceptor';
+export {
+  actorFromRequest,
+  entityIdFromPath,
+  eventName,
+  formatEventLog,
+  isImportantRequest,
+  requestPath,
+  shouldLogFailure,
+  successStatus,
+} from './http/event-log';
+export type { EventLogFields, EventOutcome } from './http/event-log';
 export { paginated, PaginatedResponseDto, PaginationMetaDto } from './http/paginated';
 export { isUuidLike, IsUuidLike, UUID_LIKE_PATTERN } from './http/uuid-like';
 export { internalGet, internalPut, internalPost, bearerGet, parseServiceUrls } from './http/internal-client';

@@ -28,12 +28,19 @@ describe('GatewayService', () => {
     expect(service.targetFor('/api/v1/projects')).toBe('http://127.0.0.1:3003');
     expect(service.targetFor('/api/v1/documents/x/file')).toBe('http://127.0.0.1:3003');
     expect(service.targetFor('/api/v1/dashboard/summary')).toBe('http://127.0.0.1:3003');
+    expect(service.targetFor('/api/v1/dashboard/map-points')).toBe('http://127.0.0.1:3003');
+    expect(service.targetFor('/api/v1/schemes')).toBe('http://127.0.0.1:3003');
+    expect(service.targetFor('/api/v1/imports/templates/department.csv')).toBe('http://127.0.0.1:3003');
     expect(service.targetFor('/api/v1/reports/projects.csv')).toBe('http://127.0.0.1:3003');
+    expect(service.targetFor('/api/v1/reports/schemes.csv')).toBe('http://127.0.0.1:3003');
+    expect(service.targetFor('/api/v1/reports/departments.csv')).toBe('http://127.0.0.1:3002');
+    expect(service.targetFor('/api/v1/reports/locations.csv')).toBe('http://127.0.0.1:3002');
   });
 
   it('routes governance and notify paths', () => {
     expect(service.targetFor('/api/v1/meetings')).toBe('http://127.0.0.1:3004');
     expect(service.targetFor('/api/v1/actions')).toBe('http://127.0.0.1:3004');
+    expect(service.targetFor('/api/v1/reports/actions.csv')).toBe('http://127.0.0.1:3004');
     expect(service.targetFor('/api/v1/governance/summary')).toBe('http://127.0.0.1:3004');
     expect(service.targetFor('/api/v1/notifications')).toBe('http://127.0.0.1:3005');
   });

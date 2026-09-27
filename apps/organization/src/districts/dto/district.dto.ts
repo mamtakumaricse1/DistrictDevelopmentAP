@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateDistrictDto {
   @ApiProperty({ example: 'CHANGLANG' })
@@ -28,6 +29,13 @@ export class CreateDistrictDto {
   @IsString()
   @MaxLength(200)
   headquarters?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  population?: number;
 
   @ApiPropertyOptional({ example: 'changlang' })
   @IsOptional()
@@ -72,6 +80,13 @@ export class UpdateDistrictDto {
   @IsString()
   @MaxLength(200)
   headquarters?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  population?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()

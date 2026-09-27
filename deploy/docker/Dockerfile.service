@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM node:20-alpine AS build
 WORKDIR /app
 ARG SERVICE
@@ -10,7 +11,8 @@ COPY apps/works/package.json apps/works/package.json
 COPY apps/governance/package.json apps/governance/package.json
 COPY apps/notify/package.json apps/notify/package.json
 COPY apps/web/package.json apps/web/package.json
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci || npm ci
 COPY packages/common packages/common
 COPY apps/${SERVICE} apps/${SERVICE}
 COPY scripts scripts
@@ -23,6 +25,7 @@ WORKDIR /app
 ARG SERVICE
 ARG PORT=3000
 ENV NODE_ENV=production
+# Full workspace node_modules (includes prisma + tsx) so the entrypoint can migrate and seed.
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/common ./packages/common
 COPY --from=build /app/apps/${SERVICE} ./apps/${SERVICE}

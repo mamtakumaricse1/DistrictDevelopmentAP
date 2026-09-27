@@ -52,6 +52,8 @@ export class DepartmentsService {
           code: dto.code.trim().toUpperCase(),
           name: dto.name.trim(),
           shortName: dto.shortName?.trim(),
+          hodName: dto.hodName?.trim(),
+          hodContact: dto.hodContact?.trim(),
           createdById: auth.userId,
           updatedById: auth.userId,
         },
@@ -72,6 +74,8 @@ export class DepartmentsService {
         data: {
           name: dto.name?.trim(),
           shortName: dto.shortName?.trim(),
+          hodName: dto.hodName === undefined ? undefined : dto.hodName?.trim() ?? null,
+          hodContact: dto.hodContact === undefined ? undefined : dto.hodContact?.trim() ?? null,
           isActive: dto.isActive,
           updatedById: auth.userId,
         },
@@ -96,6 +100,8 @@ export class DepartmentsService {
       code: true,
       name: true,
       shortName: true,
+      hodName: true,
+      hodContact: true,
       isActive: true,
     };
   }

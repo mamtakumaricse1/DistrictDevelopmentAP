@@ -3,9 +3,20 @@ import { PrismaClient } from '../src/generated/prisma';
 const prisma = new PrismaClient();
 
 const CHANGLANG = '11111111-1111-1111-1111-111111111111';
-const TIRAP = '22222222-2222-2222-2222-222222222222';
-const CHANGLANG_PWD = '33333333-3333-3333-3333-333333333333';
-const TIRAP_PWD = '55555555-5555-5555-5555-555555555555';
+const CHANGLANG_DEPTS: Record<string, string> = {
+  PWD: '33333333-3333-3333-3333-333333333333',
+  EDU: '33333333-3333-3333-3333-333333333334',
+  HLT: '33333333-3333-3333-3333-333333333335',
+  PHED: '33333333-3333-3333-3333-333333333336',
+  RD: '33333333-3333-3333-3333-333333333337',
+  RWD: '33333333-3333-3333-3333-333333333338',
+  AGR: '33333333-3333-3333-3333-333333333339',
+  SW: '33333333-3333-3333-3333-33333333333a',
+  UD: '33333333-3333-3333-3333-33333333333b',
+  FCS: '33333333-3333-3333-3333-33333333333c',
+  TRN: '33333333-3333-3333-3333-33333333333d',
+  PWR: '33333333-3333-3333-3333-33333333333e',
+};
 
 const PERMISSIONS: Array<{ code: string; name: string; module: string }> = [
   { code: 'district:manage', name: 'Manage districts', module: 'district' },
@@ -57,6 +68,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
   DEPARTMENT_USER: [
     'district:read',
+    'project:create',
     'project:read',
     'project:update',
     'progress:submit',
@@ -64,6 +76,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'document:upload',
     'dashboard:read',
     'action:update',
+    'report:export',
     'notification:read',
   ],
   VIEWER: [
@@ -73,6 +86,56 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'dashboard:read',
     'report:export',
     'notification:read',
+  ],
+  ADC: [
+    'district:read',
+    'project:read',
+    'progress:read',
+    'dashboard:read',
+    'meeting:manage',
+    'action:manage',
+    'action:update',
+    'report:export',
+    'notification:read',
+  ],
+  DIO: [
+    'district:read',
+    'user:manage',
+    'department:manage',
+    'agency:manage',
+    'master:manage',
+    'config:manage',
+    'project:read',
+    'progress:read',
+    'dashboard:read',
+    'report:export',
+    'audit:read',
+    'notification:read',
+  ],
+  BDO: [
+    'district:read',
+    'project:read',
+    'progress:read',
+    'progress:submit',
+    'dashboard:read',
+    'action:update',
+    'notification:read',
+  ],
+  DATA_ENTRY: [
+    'district:read',
+    'project:read',
+    'project:update',
+    'progress:submit',
+    'progress:read',
+    'document:upload',
+    'dashboard:read',
+    'report:export',
+    'notification:read',
+  ],
+  CITIZEN: [
+    'district:read',
+    'project:read',
+    'progress:read',
   ],
 };
 
@@ -129,9 +192,14 @@ async function main(): Promise<void> {
 
   const roles = [
     { code: 'SUPER_ADMIN', name: 'System Administrator', description: 'Cross-district technical administration' },
-    { code: 'DISTRICT_ADMIN', name: 'District Administrator', description: 'Consolidated district monitoring' },
-    { code: 'DEPARTMENT_USER', name: 'Department User', description: 'Department or agency officer' },
+    { code: 'DISTRICT_ADMIN', name: 'Deputy Commissioner (DC)', description: 'Full district access for the DC' },
+    { code: 'DEPARTMENT_USER', name: 'Department HoD', description: 'Own department data only' },
     { code: 'VIEWER', name: 'Viewer', description: 'Read-only access' },
+    { code: 'ADC', name: 'Additional Deputy Commissioner', description: 'Full monitoring and review, no user administration' },
+    { code: 'DIO', name: 'District Informatics Officer', description: 'System administration and technical management for the district' },
+    { code: 'BDO', name: 'Block Development Officer', description: 'Block-level monitoring and progress entry' },
+    { code: 'DATA_ENTRY', name: 'Data Entry Operator', description: 'Department data entry only' },
+    { code: 'CITIZEN', name: 'Citizen', description: 'Public read-only transparency view of the district' },
   ];
 
   for (const role of roles) {
@@ -148,21 +216,20 @@ async function main(): Promise<void> {
     });
   }
 
-  for (const district of [
-    { id: CHANGLANG, code: 'CHANGLANG', realm: 'changlang' },
-    { id: TIRAP, code: 'TIRAP', realm: 'tirap' },
-  ]) {
-    await prisma.registeredIssuer.upsert({
-      where: { issuer: issuerFor(district.realm) },
-      update: { realm: district.realm, districtId: district.id, districtCode: district.code, isActive: true },
-      create: {
-        issuer: issuerFor(district.realm),
-        realm: district.realm,
-        districtId: district.id,
-        districtCode: district.code,
-      },
-    });
-  }
+  await prisma.registeredIssuer.upsert({
+    where: { issuer: issuerFor('changlang') },
+    update: { realm: 'changlang', districtId: CHANGLANG, districtCode: 'CHANGLANG', isActive: true },
+    create: {
+      issuer: issuerFor('changlang'),
+      realm: 'changlang',
+      districtId: CHANGLANG,
+      districtCode: 'CHANGLANG',
+    },
+  });
+  await prisma.registeredIssuer.updateMany({
+    where: { realm: 'tirap' },
+    data: { isActive: false },
+  });
 
   await upsertUser({
     issuer: issuerFor('system'),
@@ -174,17 +241,62 @@ async function main(): Promise<void> {
   await upsertUser({
     issuer: issuerFor('changlang'),
     email: 'da.changlang@ddwmd.local',
-    displayName: 'Changlang District Admin',
+    displayName: 'DC Changlang',
     roleCode: 'DISTRICT_ADMIN',
     districtId: CHANGLANG,
   });
   await upsertUser({
     issuer: issuerFor('changlang'),
-    email: 'pwd.changlang@ddwmd.local',
-    displayName: 'Changlang PWD Officer',
-    roleCode: 'DEPARTMENT_USER',
+    email: 'adc.changlang@ddwmd.local',
+    displayName: 'ADC Changlang',
+    roleCode: 'ADC',
     districtId: CHANGLANG,
-    departmentId: CHANGLANG_PWD,
+  });
+  await upsertUser({
+    issuer: issuerFor('changlang'),
+    email: 'dio.changlang@ddwmd.local',
+    displayName: 'DIO Changlang',
+    roleCode: 'DIO',
+    districtId: CHANGLANG,
+  });
+  await upsertUser({
+    issuer: issuerFor('changlang'),
+    email: 'bdo.changlang@ddwmd.local',
+    displayName: 'BDO Changlang',
+    roleCode: 'BDO',
+    districtId: CHANGLANG,
+  });
+  const hods: Array<{ email: string; name: string; dept: string }> = [
+    { email: 'pwd.changlang@ddwmd.local', name: 'Changlang PWD HoD', dept: 'PWD' },
+    { email: 'rwd.changlang@ddwmd.local', name: 'Changlang RWD HoD', dept: 'RWD' },
+    { email: 'phed.changlang@ddwmd.local', name: 'Changlang PHED HoD', dept: 'PHED' },
+    { email: 'edu.changlang@ddwmd.local', name: 'Changlang Education HoD', dept: 'EDU' },
+    { email: 'hlt.changlang@ddwmd.local', name: 'Changlang Health HoD', dept: 'HLT' },
+    { email: 'rd.changlang@ddwmd.local', name: 'Changlang RD HoD', dept: 'RD' },
+    { email: 'agr.changlang@ddwmd.local', name: 'Changlang Agriculture HoD', dept: 'AGR' },
+    { email: 'sw.changlang@ddwmd.local', name: 'Changlang Social Welfare HoD', dept: 'SW' },
+    { email: 'ud.changlang@ddwmd.local', name: 'Changlang UD HoD', dept: 'UD' },
+    { email: 'fcs.changlang@ddwmd.local', name: 'Changlang FCS HoD', dept: 'FCS' },
+    { email: 'trn.changlang@ddwmd.local', name: 'Changlang Transport HoD', dept: 'TRN' },
+    { email: 'pwr.changlang@ddwmd.local', name: 'Changlang Power HoD', dept: 'PWR' },
+  ];
+  for (const hod of hods) {
+    await upsertUser({
+      issuer: issuerFor('changlang'),
+      email: hod.email,
+      displayName: hod.name,
+      roleCode: 'DEPARTMENT_USER',
+      districtId: CHANGLANG,
+      departmentId: CHANGLANG_DEPTS[hod.dept],
+    });
+  }
+  await upsertUser({
+    issuer: issuerFor('changlang'),
+    email: 'data.pwd.changlang@ddwmd.local',
+    displayName: 'PWD data entry — Changlang',
+    roleCode: 'DATA_ENTRY',
+    districtId: CHANGLANG,
+    departmentId: CHANGLANG_DEPTS.PWD,
   });
   await upsertUser({
     issuer: issuerFor('changlang'),
@@ -194,19 +306,11 @@ async function main(): Promise<void> {
     districtId: CHANGLANG,
   });
   await upsertUser({
-    issuer: issuerFor('tirap'),
-    email: 'da.tirap@ddwmd.local',
-    displayName: 'Tirap District Admin',
-    roleCode: 'DISTRICT_ADMIN',
-    districtId: TIRAP,
-  });
-  await upsertUser({
-    issuer: issuerFor('tirap'),
-    email: 'pwd.tirap@ddwmd.local',
-    displayName: 'Tirap PWD Officer',
-    roleCode: 'DEPARTMENT_USER',
-    districtId: TIRAP,
-    departmentId: TIRAP_PWD,
+    issuer: issuerFor('changlang'),
+    email: 'citizen.changlang@ddwmd.local',
+    displayName: 'Citizen — Changlang',
+    roleCode: 'CITIZEN',
+    districtId: CHANGLANG,
   });
 
   console.log('Identity seed complete.');

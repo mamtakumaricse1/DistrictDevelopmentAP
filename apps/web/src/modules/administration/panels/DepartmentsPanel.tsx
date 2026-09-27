@@ -30,6 +30,8 @@ const schema = z.object({
   code: z.string().min(2).max(32),
   name: z.string().min(2).max(200),
   shortName: z.string().max(50).optional(),
+  hodName: z.string().max(200).optional(),
+  hodContact: z.string().max(80).optional(),
 });
 
 export function DepartmentsPanel() {
@@ -125,6 +127,8 @@ export function DepartmentsPanel() {
         <TextField label="Code" {...form.register('code')} required />
         <TextField label="Name" {...form.register('name')} required />
         <TextField label="Short name" {...form.register('shortName')} />
+        <TextField label="HoD / officer" {...form.register('hodName')} />
+        <TextField label="HoD contact" {...form.register('hodContact')} />
       </FormDialog>
 
       <FormDialog
@@ -137,7 +141,13 @@ export function DepartmentsPanel() {
           }
           update.mutate({
             id: editing.id,
-            body: { name: editing.name, shortName: editing.shortName, isActive: editing.isActive },
+            body: {
+              name: editing.name,
+              shortName: editing.shortName,
+              hodName: editing.hodName,
+              hodContact: editing.hodContact,
+              isActive: editing.isActive,
+            },
           });
         }}
       >
@@ -152,6 +162,16 @@ export function DepartmentsPanel() {
               label="Short name"
               value={editing.shortName ?? ''}
               onChange={(event) => setEditing({ ...editing, shortName: event.target.value })}
+            />
+            <TextField
+              label="HoD / officer"
+              value={editing.hodName ?? ''}
+              onChange={(event) => setEditing({ ...editing, hodName: event.target.value })}
+            />
+            <TextField
+              label="HoD contact"
+              value={editing.hodContact ?? ''}
+              onChange={(event) => setEditing({ ...editing, hodContact: event.target.value })}
             />
             <FormControlLabel
               control={

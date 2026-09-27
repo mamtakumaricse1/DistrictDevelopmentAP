@@ -7,11 +7,12 @@ Keycloak is the only identity provider. The application never stores passwords.
 | Realm | Who | Token issuer (local) |
 | --- | --- | --- |
 | `system` | SUPER_ADMIN only | `{KEYCLOAK_URL}/realms/system` |
-| `changlang` | Changlang officers | `{KEYCLOAK_URL}/realms/changlang` |
-| `tirap` | Isolation-test district (seed) | `{KEYCLOAK_URL}/realms/tirap` |
+| `changlang` | Changlang officers (only live district realm for now) | `{KEYCLOAK_URL}/realms/changlang` |
 | *future district* | That district only | `{KEYCLOAK_URL}/realms/{code}` |
 
 A shared Keycloak *process* (Compose or NIC) can host all realms. **Do not** put two districts in one realm.
+
+`KEYCLOAK_URL` is the public issuer the browser and JWT `iss` claim use (`http://localhost:8180` in Compose). API containers cannot reach that host name, so they also set `KEYCLOAK_INTERNAL_URL=http://keycloak:8080` and fetch JWKS from the internal URL while still validating `iss` against the public issuer.
 
 ```
 User picks district on /login
@@ -58,8 +59,10 @@ Password for all local users: `ChangeMe!2026` (never use in production).
 | Username | Realm | Application role |
 | --- | --- | --- |
 | `sys.admin` | system | SUPER_ADMIN |
-| `da.changlang` | changlang | DISTRICT_ADMIN |
-| `pwd.changlang` | changlang | DEPARTMENT_USER (PWD) |
+| `da.changlang` | changlang | DISTRICT_ADMIN (DC) |
+| `adc.changlang` | changlang | ADC |
+| `dio.changlang` | changlang | DIO |
+| `bdo.changlang` | changlang | BDO |
+| `pwd.changlang` … `pwr.changlang` | changlang | DEPARTMENT_USER (all 12 departments) |
+| `data.pwd.changlang` | changlang | DATA_ENTRY |
 | `viewer.changlang` | changlang | VIEWER |
-| `da.tirap` | tirap | DISTRICT_ADMIN |
-| `pwd.tirap` | tirap | DEPARTMENT_USER (PWD) |

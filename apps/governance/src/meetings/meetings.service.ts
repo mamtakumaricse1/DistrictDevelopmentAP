@@ -27,6 +27,38 @@ export class MeetingsService {
     });
   }
 
+  async getById(auth: AuthContext, id: string) {
+    this.authz.assertPermission(auth, 'meeting:manage');
+    const meeting = await this.prisma.reviewMeeting.findUnique({
+      where: { id },
+      include: { actions: { where: { isActive: true }, orderBy: { dueDate: 'asc' } } },
+    });
+    if (!meeting || !meeting.isActive) {
+      throw new NotFoundException('Meeting not found.');
+    }
+    this.authz.assertDistrictAccess(auth, meeting.districtId);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const actions = meeting.actions.map((row) => ({
+      ...row,
+      dueDate: row.dueDate ? row.dueDate.toISOString().slice(0, 10) : null,
+      nextReviewAt: row.nextReviewAt ? row.nextReviewAt.toISOString().slice(0, 10) : null,
+      daysPending: Math.max(0, Math.floor((today.getTime() - row.createdAt.getTime()) / 86_400_000)),
+    }));
+    const byDepartment = new Map<string, typeof actions>();
+    for (const action of actions) {
+      const key = action.departmentId ?? 'unassigned';
+      const list = byDepartment.get(key) ?? [];
+      list.push(action);
+      byDepartment.set(key, list);
+    }
+    return {
+      ...meeting,
+      actions,
+      departments: [...byDepartment.entries()].map(([departmentId, items]) => ({ departmentId, actions: items })),
+    };
+  }
+
   async create(auth: AuthContext, dto: CreateMeetingDto) {
     this.authz.assertPermission(auth, 'meeting:manage');
     this.authz.assertDistrictAccess(auth, dto.districtId);
@@ -37,6 +69,7 @@ export class MeetingsService {
         scheduledAt: new Date(dto.scheduledAt),
         venue: dto.venue?.trim(),
         notes: dto.notes?.trim(),
+        nextReviewAt: dto.nextReviewAt ? new Date(dto.nextReviewAt) : undefined,
         createdById: auth.userId,
       },
     });
@@ -66,6 +99,8 @@ export class MeetingsService {
         venue: dto.venue === undefined ? undefined : dto.venue?.trim() ?? null,
         notes: dto.notes === undefined ? undefined : dto.notes?.trim() ?? null,
         status: dto.status,
+        nextReviewAt:
+          dto.nextReviewAt === undefined ? undefined : dto.nextReviewAt ? new Date(dto.nextReviewAt) : null,
       },
     });
   }

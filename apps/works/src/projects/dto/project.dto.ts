@@ -13,7 +13,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { IsUuidLike } from '@ddwmd/common';
-import { ProjectStatus } from '../../generated/prisma';
+import { ProjectCategory, ProjectStatus, WorkType } from '../../generated/prisma';
 
 export class CreateProjectDto {
   @ApiProperty()
@@ -59,6 +59,39 @@ export class CreateProjectDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsUuidLike()
+  schemeId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUuidLike()
+  locationId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  releasedAmount?: number;
+
+  @ApiPropertyOptional({ enum: ProjectCategory })
+  @IsOptional()
+  @IsEnum(ProjectCategory)
+  category?: ProjectCategory;
+
+  @ApiPropertyOptional({ enum: WorkType })
+  @IsOptional()
+  @IsEnum(WorkType)
+  workType?: WorkType;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  contractor?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
   @MaxLength(300)
   locationText?: string;
@@ -72,12 +105,18 @@ export class CreateProjectDto {
   @IsOptional()
   @IsDateString()
   endDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  expectedCompletion?: string;
 }
 
 export class UpdateProjectDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MinLength(3)
   @MaxLength(300)
   name?: string;
 
@@ -111,6 +150,39 @@ export class UpdateProjectDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsUuidLike()
+  schemeId?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUuidLike()
+  locationId?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  releasedAmount?: number | null;
+
+  @ApiPropertyOptional({ enum: ProjectCategory })
+  @IsOptional()
+  @IsEnum(ProjectCategory)
+  category?: ProjectCategory | null;
+
+  @ApiPropertyOptional({ enum: WorkType })
+  @IsOptional()
+  @IsEnum(WorkType)
+  workType?: WorkType | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  contractor?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
   @MaxLength(300)
   locationText?: string | null;
@@ -124,4 +196,9 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsDateString()
   endDate?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  expectedCompletion?: string | null;
 }

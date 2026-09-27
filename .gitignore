@@ -61,6 +61,9 @@ pnpm-debug.log*
 *.sql.gz
 pgdata/
 
+# --- Local reference documents (do not push to GitHub) ---
+/library-packages-and-workflow.docx
+
 # --- Editor and OS junk ---
 .vscode/
 .idea/

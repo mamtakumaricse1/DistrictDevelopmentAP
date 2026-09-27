@@ -1,4 +1,5 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
+import { eventName, formatEventLog, requestPath } from '@ddwmd/common';
 import { NextFunction, Request, Response } from 'express';
 import { GatewayService } from './gateway.service';
 
@@ -6,6 +7,8 @@ const HOP_BY_HOP = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'p
 
 @Injectable()
 export class GatewayProxyMiddleware implements NestMiddleware {
+  private readonly logger = new Logger('Event');
+
   constructor(private readonly gateway: GatewayService) {}
 
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -21,6 +24,7 @@ export class GatewayProxyMiddleware implements NestMiddleware {
       try {
         body = await this.readBody(req);
       } catch {
+        this.logGatewayFailure(req, 413);
         res.status(413).json({
           error: {
             code: 'PAYLOAD_TOO_LARGE',
@@ -63,6 +67,7 @@ export class GatewayProxyMiddleware implements NestMiddleware {
       }
     }
 
+    this.logGatewayFailure(req, 502);
     res.status(502).json({
       error: {
         code: 'BAD_GATEWAY',
@@ -71,6 +76,21 @@ export class GatewayProxyMiddleware implements NestMiddleware {
         requestId: req.header('x-request-id'),
       },
     });
+  }
+
+  private logGatewayFailure(req: Request, status: number): void {
+    const path = requestPath(req);
+    this.logger.warn(
+      formatEventLog({
+        event: eventName(req.method, path),
+        outcome: 'error',
+        status,
+        method: req.method,
+        path,
+        actor: 'gateway',
+        requestId: req.header('x-request-id') ?? undefined,
+      }),
+    );
   }
 
   private forwardHeaders(req: Request): Record<string, string> {

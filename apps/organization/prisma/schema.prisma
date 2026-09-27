@@ -21,6 +21,13 @@ enum SettingValueType {
   JSON
 }
 
+enum LocationType {
+  BLOCK
+  CIRCLE
+  GRAM_PANCHAYAT
+  VILLAGE
+}
+
 model District {
   id             String   @id @default(uuid()) @db.Uuid
   code           String   @unique @db.VarChar(32)
@@ -28,6 +35,7 @@ model District {
   stateCode      String   @map("state_code") @db.VarChar(16)
   stateName      String   @map("state_name") @db.VarChar(120)
   headquarters   String?  @db.VarChar(200)
+  population     Int?
   keycloakRealm  String?  @unique @map("keycloak_realm") @db.VarChar(64)
   keycloakIssuer String?  @unique @map("keycloak_issuer") @db.VarChar(300)
   timezone       String   @default("Asia/Kolkata") @db.VarChar(64)
@@ -41,6 +49,7 @@ model District {
   agencies    Agency[]
   settings    SystemSetting[]
   masterItems MasterDataItem[]
+  locations   Location[]
 
   @@map("districts")
 }
@@ -51,6 +60,8 @@ model Department {
   code        String   @db.VarChar(32)
   name        String   @db.VarChar(200)
   shortName   String?  @map("short_name") @db.VarChar(50)
+  hodName     String?  @map("hod_name") @db.VarChar(200)
+  hodContact  String?  @map("hod_contact") @db.VarChar(80)
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -63,6 +74,30 @@ model Department {
   @@unique([districtId, code])
   @@index([districtId])
   @@map("departments")
+}
+
+model Location {
+  id         String       @id @default(uuid()) @db.Uuid
+  districtId String       @map("district_id") @db.Uuid
+  parentId   String?      @map("parent_id") @db.Uuid
+  type       LocationType
+  code       String       @db.VarChar(64)
+  name       String       @db.VarChar(200)
+  population Int?
+  latitude   Decimal?     @db.Decimal(9, 6)
+  longitude  Decimal?     @db.Decimal(9, 6)
+  isActive   Boolean      @default(true) @map("is_active")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  district District  @relation(fields: [districtId], references: [id], onDelete: Restrict)
+  parent   Location? @relation("LocationTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children Location[] @relation("LocationTree")
+
+  @@unique([districtId, type, code])
+  @@index([districtId, type])
+  @@index([parentId])
+  @@map("locations")
 }
 
 model Agency {

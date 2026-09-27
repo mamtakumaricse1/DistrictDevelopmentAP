@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsDateString, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { IsUuidLike } from '@ddwmd/common';
-import { ActionStatus } from '../../generated/prisma';
+import { ActionSeverity, ActionStatus } from '../../generated/prisma';
 
 export class CreateActionDto {
   @ApiProperty()
@@ -44,6 +44,34 @@ export class CreateActionDto {
   @IsOptional()
   @IsDateString()
   dueDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  dcDirection?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  officerName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  locationText?: string;
+
+  @ApiPropertyOptional({ enum: ActionSeverity })
+  @IsOptional()
+  @IsEnum(ActionSeverity)
+  severity?: ActionSeverity;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  nextReviewAt?: string;
 }
 
 export class UpdateActionDto {
@@ -67,4 +95,31 @@ export class UpdateActionDto {
   @IsOptional()
   @IsDateString()
   dueDate?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  dcDirection?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  officerName?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  locationText?: string | null;
+
+  @ApiPropertyOptional({ enum: ActionSeverity })
+  @IsOptional()
+  @IsEnum(ActionSeverity)
+  severity?: ActionSeverity;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  nextReviewAt?: string | null;
 }

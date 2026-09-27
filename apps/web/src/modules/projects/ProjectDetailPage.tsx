@@ -1,10 +1,14 @@
-import { Button, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField } from '@mui/material';
+import { Button, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from 'react-router-dom';
+import { z } from 'zod';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusChip } from '../../components/StatusChip';
+import { progressSchema, validateUpload } from '../../lib/validation';
 import { projectsApi } from '../../services/api/projects';
 import { ErrorAlert, FormDialog } from '../administration/panels/shared';
 
@@ -25,22 +29,25 @@ export function ProjectDetailPage() {
     enabled: Boolean(id),
   });
   const [progressOpen, setProgressOpen] = useState(false);
-  const [periodYm, setPeriodYm] = useState('2026-09');
-  const [percent, setPercent] = useState('0');
-  const [status, setStatus] = useState('IN_PROGRESS');
-  const [remarks, setRemarks] = useState('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const form = useForm<z.infer<typeof progressSchema>>({
+    resolver: zodResolver(progressSchema),
+    defaultValues: { periodYm: '2026-09', physicalPercent: 0, status: 'IN_PROGRESS', remarks: '', financialAmount: '' },
+  });
 
   const submit = useMutation({
-    mutationFn: () =>
+    mutationFn: (values: z.infer<typeof progressSchema>) =>
       projectsApi.submitProgress(id!, {
-        periodYm,
-        physicalPercent: Number(percent),
-        status,
-        remarks: remarks || undefined,
+        periodYm: values.periodYm,
+        physicalPercent: values.physicalPercent,
+        financialAmount: values.financialAmount ? Number(values.financialAmount) : undefined,
+        status: values.status,
+        remarks: values.remarks || undefined,
       }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ['project', id] });
       setProgressOpen(false);
+      form.reset({ periodYm: '2026-09', physicalPercent: 0, status: 'IN_PROGRESS', remarks: '', financialAmount: '' });
     },
   });
 
@@ -48,17 +55,16 @@ export function ProjectDetailPage() {
     mutationFn: (file: File) => projectsApi.uploadDocument(id!, file),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ['project', id, 'documents'] });
+      setUploadError(null);
     },
   });
 
   return (
     <>
-      <PageHeader
-        title={project.data?.code ?? 'Project'}
-        description={project.data?.name}
-      />
+      <PageHeader title={project.data?.code ?? 'Project'} description={project.data?.name} />
       <Stack spacing={2}>
         <ErrorAlert error={project.error ?? progress.error ?? documents.error ?? submit.error ?? upload.error} />
+        {uploadError ? <ErrorAlert error={new Error(uploadError)} /> : null}
         <Button sx={{ alignSelf: 'flex-start' }} onClick={() => navigate('/projects')}>
           Back to projects
         </Button>
@@ -100,9 +106,15 @@ export function ProjectDetailPage() {
               accept="application/pdf,image/jpeg,image/png,image/webp"
               onChange={(event) => {
                 const file = event.target.files?.[0];
-                if (file) {
-                  upload.mutate(file);
+                if (!file) {
+                  return;
                 }
+                const problem = validateUpload(file);
+                if (problem) {
+                  setUploadError(problem);
+                  return;
+                }
+                upload.mutate(file);
               }}
             />
           </Button>
@@ -139,11 +151,41 @@ export function ProjectDetailPage() {
           </TableBody>
         </Table>
       </Stack>
-      <FormDialog title="New progress version" open={progressOpen} onClose={() => setProgressOpen(false)} onSubmit={() => submit.mutate()}>
-        <TextField label="Period YYYY-MM" value={periodYm} onChange={(event) => setPeriodYm(event.target.value)} />
-        <TextField label="Physical %" type="number" value={percent} onChange={(event) => setPercent(event.target.value)} />
-        <TextField label="Status" value={status} onChange={(event) => setStatus(event.target.value)} helperText="NOT_STARTED, IN_PROGRESS, DELAYED, STALLED, COMPLETED" />
-        <TextField label="Remarks" multiline minRows={2} value={remarks} onChange={(event) => setRemarks(event.target.value)} />
+      <FormDialog
+        title="New progress version"
+        open={progressOpen}
+        onClose={() => setProgressOpen(false)}
+        onSubmit={form.handleSubmit((values) => submit.mutate(values))}
+      >
+        <TextField
+          label="Period YYYY-MM"
+          {...form.register('periodYm')}
+          error={Boolean(form.formState.errors.periodYm)}
+          helperText={form.formState.errors.periodYm?.message}
+          required
+        />
+        <TextField
+          label="Physical %"
+          type="number"
+          {...form.register('physicalPercent')}
+          error={Boolean(form.formState.errors.physicalPercent)}
+          helperText={form.formState.errors.physicalPercent?.message}
+          required
+        />
+        <TextField label="Financial amount" {...form.register('financialAmount')} helperText={form.formState.errors.financialAmount?.message} />
+        <TextField
+          select
+          label="Status"
+          value={form.watch('status')}
+          onChange={(event) => form.setValue('status', event.target.value as z.infer<typeof progressSchema>['status'])}
+        >
+          {['NOT_STARTED', 'IN_PROGRESS', 'DELAYED', 'STALLED', 'COMPLETED'].map((value) => (
+            <MenuItem key={value} value={value}>
+              {value.replaceAll('_', ' ')}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField label="Remarks" multiline minRows={2} {...form.register('remarks')} helperText={form.formState.errors.remarks?.message} />
       </FormDialog>
     </>
   );

@@ -20,6 +20,8 @@ type AuthContextValue = {
   completeCallback: () => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
+  isDepartmentScoped: boolean;
+  isCitizen: boolean;
 };
 
 const AuthReactContext = createContext<AuthContextValue | null>(null);
@@ -135,6 +137,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       completeCallback,
       logout,
       hasPermission: (permission: string) => Boolean(profile?.permissions.includes(permission)),
+      isDepartmentScoped: Boolean(profile && !profile.isSuperAdmin && profile.departmentIds.length > 0),
+      isCitizen: Boolean(profile?.roles.some((role) => role.code === 'CITIZEN')),
     }),
     [status, accessToken, profile, error, login, completeCallback, logout],
   );

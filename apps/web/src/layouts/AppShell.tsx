@@ -5,10 +5,15 @@ import FolderIcon from '@mui/icons-material/Folder';
 import GroupsIcon from '@mui/icons-material/Groups';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import LogoutIcon from '@mui/icons-material/Logout';
+import MapIcon from '@mui/icons-material/Map';
 import MenuIcon from '@mui/icons-material/Menu';
+import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
+import SchoolIcon from '@mui/icons-material/School';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SummarizeIcon from '@mui/icons-material/Summarize';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import DomainIcon from '@mui/icons-material/Domain';
 import {
   AppBar,
   Badge,
@@ -36,13 +41,18 @@ import { notificationsApi } from '../services/api/notifications';
 const DRAWER_WIDTH = 260;
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon />, permission: 'dashboard:read' },
+  { label: 'Home', deptLabel: 'My department', citizenLabel: 'Public home', path: '/dashboard', icon: <DashboardIcon />, permission: 'dashboard:read' },
+  { label: 'Schemes', path: '/schemes', icon: <AccountTreeIcon />, permission: 'project:read' },
+  { label: 'Blocks', path: '/blocks', icon: <MapIcon />, permission: 'dashboard:read' },
+  { label: 'Infrastructure', path: '/infrastructure', icon: <DomainIcon />, permission: 'dashboard:read' },
+  { label: 'Human development', path: '/human-development', icon: <SchoolIcon />, permission: 'dashboard:read' },
+  { label: 'DC priorities', deptLabel: 'My priorities', citizenLabel: 'Progress & delays', path: '/exceptions', icon: <PriorityHighIcon />, permission: 'dashboard:read' },
+  { label: 'DC review', path: '/meetings', icon: <GroupsIcon />, permission: 'meeting:manage', officerOnly: true },
+  { label: 'Reports', path: '/reports', icon: <SummarizeIcon />, permission: 'report:export' },
   { label: 'Projects', path: '/projects', icon: <FolderIcon />, permission: 'project:read' },
   { label: 'Action tracker', path: '/actions', icon: <AssignmentIcon />, anyOf: ['action:update', 'action:manage'] },
-  { label: 'Review meetings', path: '/meetings', icon: <GroupsIcon />, permission: 'meeting:manage' },
-  { label: 'Reports', path: '/reports', icon: <SummarizeIcon />, permission: 'report:export' },
-  { label: 'Administration', path: '/administration', icon: <SettingsIcon />, anyOf: ['user:manage', 'master:manage', 'district:manage'] },
-  { label: 'System health', path: '/health', icon: <HealthAndSafetyIcon />, permission: 'dashboard:read' },
+  { label: 'Administration', path: '/administration', icon: <SettingsIcon />, anyOf: ['user:manage', 'master:manage', 'district:manage'], officerOnly: true },
+  { label: 'System health', path: '/health', icon: <HealthAndSafetyIcon />, permission: 'dashboard:read', officerOnly: true },
 ] as const;
 
 export function AppShell() {
@@ -51,7 +61,7 @@ export function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { profile, hasPermission, logout } = useAuth();
+  const { profile, hasPermission, isDepartmentScoped, isCitizen, logout } = useAuth();
   const client = useQueryClient();
   const [notifyAnchor, setNotifyAnchor] = useState<null | HTMLElement>(null);
   const unread = useQuery({
@@ -66,23 +76,29 @@ export function AppShell() {
     enabled: Boolean(notifyAnchor) && hasPermission('notification:read'),
   });
   const title = import.meta.env.VITE_APP_TITLE ?? 'District Development Works Monitoring';
-  const visibleNav = NAV_ITEMS.filter((item) => {
-    if ('permission' in item) {
-      return hasPermission(item.permission);
-    }
-    return item.anyOf.some((permission) => hasPermission(permission));
-  });
+  const visibleNav = isCitizen
+    ? []
+    : NAV_ITEMS.filter((item) => {
+        if ('officerOnly' in item && item.officerOnly && isDepartmentScoped) {
+          return false;
+        }
+        if ('permission' in item) {
+          return hasPermission(item.permission);
+        }
+        return item.anyOf.some((permission) => hasPermission(permission));
+      });
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Toolbar sx={{ gap: 1.5, px: 2 }}>
         <AccountBalanceIcon />
         <Typography variant="subtitle1" fontWeight={700} lineHeight={1.25}>
-          Works Monitoring
+          {isCitizen ? 'Public view' : isDepartmentScoped ? 'Department desk' : 'DC Dashboard'}
         </Typography>
       </Toolbar>
       <List sx={{ px: 1, flex: 1 }}>
         {visibleNav.map((item) => (
+
           <ListItemButton
             key={item.path}
             selected={location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)}
@@ -93,14 +109,23 @@ export function AppShell() {
             sx={{ borderRadius: 1, mb: 0.5 }}
           >
             <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
+            <ListItemText
+              primary={
+                isCitizen && 'citizenLabel' in item
+                  ? item.citizenLabel
+                  : isDepartmentScoped && 'deptLabel' in item
+                    ? item.deptLabel
+                    : item.label
+              }
+            />
           </ListItemButton>
         ))}
       </List>
       <Box sx={{ px: 2, pb: 2 }}>
         <Typography variant="caption" color="rgba(255,255,255,0.7)">
-          Multi-district platform. District name and logo come from configuration, not source
-          code.
+          {isCitizen
+            ? 'Published district figures for public transparency. View only — no editing.'
+            : 'Multi-district platform. District name and logo come from configuration, not source code.'}
         </Typography>
       </Box>
     </Box>
@@ -120,7 +145,7 @@ export function AppShell() {
         }}
       >
         <Toolbar>
-          {!isDesktop && (
+          {!isDesktop && !isCitizen && (
             <IconButton
               color="inherit"
               edge="start"
@@ -132,7 +157,7 @@ export function AppShell() {
             </IconButton>
           )}
           <Typography variant="subtitle1" fontWeight={600} noWrap sx={{ flexGrow: 1 }}>
-            {title}
+            {isCitizen ? 'Public schemes' : title}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }} noWrap>
             {profile?.displayName}
@@ -181,6 +206,7 @@ export function AppShell() {
           </Button>
         </Toolbar>
       </AppBar>
+      {isCitizen ? null : (
       <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
         {isDesktop ? (
           <Drawer
@@ -216,12 +242,13 @@ export function AppShell() {
           </Drawer>
         )}
       </Box>
+      )}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: { xs: 2, md: 3 },
-          width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
+          width: { md: isCitizen ? '100%' : `calc(100% - ${DRAWER_WIDTH}px)` },
         }}
       >
         <Toolbar />

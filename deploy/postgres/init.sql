@@ -1,3 +1,4 @@
+CREATE DATABASE dashboard;
 CREATE DATABASE district_identity;
 CREATE DATABASE district_organization;
 CREATE DATABASE district_works;

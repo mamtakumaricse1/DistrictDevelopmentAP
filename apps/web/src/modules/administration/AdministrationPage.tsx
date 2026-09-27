@@ -9,8 +9,9 @@ import { MasterDataPanel } from './panels/MasterDataPanel';
 import { RolesPanel } from './panels/RolesPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
 import { UsersPanel } from './panels/UsersPanel';
+import { LocationsPanel } from './panels/LocationsPanel';
 
-type TabId = 'districts' | 'departments' | 'agencies' | 'users' | 'roles' | 'master' | 'settings';
+type TabId = 'districts' | 'departments' | 'agencies' | 'locations' | 'users' | 'roles' | 'master' | 'settings';
 
 export function AdministrationPage() {
   const { hasPermission } = useAuth();
@@ -18,6 +19,7 @@ export function AdministrationPage() {
     { id: 'districts', label: 'Districts', show: hasPermission('district:read') },
     { id: 'departments', label: 'Departments', show: hasPermission('district:read') },
     { id: 'agencies', label: 'Agencies', show: hasPermission('district:read') },
+    { id: 'locations', label: 'Locations', show: hasPermission('district:read') },
     { id: 'users', label: 'Users', show: hasPermission('user:manage') },
     { id: 'roles', label: 'Roles', show: hasPermission('user:manage') },
     { id: 'master', label: 'Master data', show: hasPermission('master:manage') },
@@ -47,6 +49,7 @@ export function AdministrationPage() {
         {current === 'districts' ? <DistrictsPanel /> : null}
         {current === 'departments' ? <DepartmentsPanel /> : null}
         {current === 'agencies' ? <AgenciesPanel /> : null}
+        {current === 'locations' ? <LocationsPanel /> : null}
         {current === 'users' ? <UsersPanel /> : null}
         {current === 'roles' ? <RolesPanel /> : null}
         {current === 'master' ? <MasterDataPanel /> : null}

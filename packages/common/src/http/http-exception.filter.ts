@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { actorFromRequest, entityIdFromPath, eventName, formatEventLog, requestPath, shouldLogFailure } from './event-log';
 
 type ErrorBody = {
   error: {
@@ -48,17 +49,37 @@ export class HttpExceptionFilter implements ExceptionFilter {
           message = body.message;
         }
       }
-    } else {
-      this.logger.error(
-        `Unhandled error requestId=${requestId ?? 'none'}`,
-        exception instanceof Error ? exception.stack : undefined,
-      );
     }
+
+    this.logFailure(request, status, exception);
 
     const body: ErrorBody = {
       error: { code, message, details, requestId },
     };
     response.status(status).json(body);
+  }
+
+  private logFailure(request: Request, status: number, exception: unknown): void {
+    const method = request.method ?? 'GET';
+    const path = requestPath(request);
+    if (!shouldLogFailure(method, path, status)) {
+      return;
+    }
+    const line = formatEventLog({
+      event: eventName(method, path),
+      outcome: 'error',
+      status,
+      method,
+      path,
+      actor: actorFromRequest(request),
+      requestId: request.requestId,
+      entityId: entityIdFromPath(path),
+    });
+    if (status >= 500) {
+      this.logger.error(line, exception instanceof Error ? exception.stack : undefined);
+      return;
+    }
+    this.logger.warn(line);
   }
 
   private codeForStatus(status: number): string {

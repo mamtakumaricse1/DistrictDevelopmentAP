@@ -21,3 +21,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   return children;
 }
+
+export function OfficerOnly({ children }: { children: ReactNode }) {
+  const { isCitizen } = useAuth();
+  if (isCitizen) {
+    return <Navigate to="/schemes" replace />;
+  }
+  return children;
+}

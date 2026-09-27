@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { UUID_LIKE } from '../../lib/ids';
+import { projectCreateSchema, projectUpdateSchema } from '../../lib/validation';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusChip } from '../../components/StatusChip';
@@ -35,18 +35,7 @@ import { ErrorAlert, FormDialog } from '../administration/panels/shared';
 const STATUSES: ProjectStatus[] = ['DRAFT', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CLOSED'];
 const PAGE_SIZE = 20;
 
-const createSchema = z.object({
-  name: z.string().min(3).max(300),
-  departmentId: z.string().regex(UUID_LIKE, 'Must be a UUID'),
-  implementingAgencyId: z.string().regex(UUID_LIKE).optional().or(z.literal('')),
-  executingAgencyId: z.string().regex(UUID_LIKE).optional().or(z.literal('')),
-  financialYear: z.coerce.number().int().min(2000).max(2100),
-  sanctionedAmount: z.string().optional(),
-  description: z.string().optional(),
-  locationText: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-});
+const createSchema = projectCreateSchema;
 
 function departmentName(departments: DepartmentRecord[], id: string): string {
   return departments.find((department) => department.id === id)?.name ?? id;
@@ -62,7 +51,7 @@ function agenciesFor(agencies: AgencyRecord[], districtId: string | undefined, k
 }
 
 export function ProjectsPage() {
-  const { hasPermission, profile } = useAuth();
+  const { hasPermission, profile, isDepartmentScoped } = useAuth();
   const navigate = useNavigate();
   const canCreate = hasPermission('project:create');
   const canUpdate = hasPermission('project:update');
@@ -72,7 +61,7 @@ export function ProjectsPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<ProjectStatus | ''>('');
   const [districtId, setDistrictId] = useState(profile?.isSuperAdmin ? '' : (profile?.districtIds[0] ?? ''));
-  const [departmentId, setDepartmentId] = useState('');
+  const [departmentId, setDepartmentId] = useState(profile?.departmentIds[0] ?? '');
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectRecord | null>(null);
 
@@ -96,6 +85,7 @@ export function ProjectsPage() {
     resolver: zodResolver(createSchema),
     defaultValues: {
       financialYear: new Date().getFullYear(),
+      departmentId: profile?.departmentIds[0] ?? '',
       implementingAgencyId: '',
       executingAgencyId: '',
     },
@@ -115,10 +105,15 @@ export function ProjectsPage() {
         executingAgencyId: values.executingAgencyId || undefined,
         financialYear: values.financialYear,
         sanctionedAmount: values.sanctionedAmount ? Number(values.sanctionedAmount) : undefined,
+        releasedAmount: values.releasedAmount ? Number(values.releasedAmount) : undefined,
+        contractor: values.contractor || undefined,
+        category: values.category || undefined,
+        workType: values.workType || undefined,
         description: values.description || undefined,
         locationText: values.locationText || undefined,
         startDate: values.startDate || undefined,
         endDate: values.endDate || undefined,
+        expectedCompletion: values.expectedCompletion || undefined,
       }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ['projects'] });
@@ -148,7 +143,11 @@ export function ProjectsPage() {
     <>
       <PageHeader
         title="Projects"
-        description="Create and update works in your district. Codes are assigned as district-department-year-sequence. Progress photos and history are a later phase."
+        description={
+          isDepartmentScoped
+            ? 'Only your department’s works. Open a project to submit monthly progress. Other departments are not visible.'
+            : 'Create and update works in your district. Codes are assigned as district-department-year-sequence.'
+        }
       />
       <Stack spacing={2}>
         <ErrorAlert error={projects.error ?? create.error ?? update.error} />
@@ -175,25 +174,27 @@ export function ProjectsPage() {
               </Select>
             </FormControl>
           ) : null}
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel id="project-department">Department</InputLabel>
-            <Select
-              labelId="project-department"
-              label="Department"
-              value={departmentId}
-              onChange={(event) => {
-                setDepartmentId(event.target.value);
-                setPage(0);
-              }}
-            >
-              <MenuItem value="">All departments</MenuItem>
-              {visibleDepartments.map((department) => (
-                <MenuItem key={department.id} value={department.id}>
-                  {department.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          {isDepartmentScoped ? null : (
+            <FormControl sx={{ minWidth: 200 }}>
+              <InputLabel id="project-department">Department</InputLabel>
+              <Select
+                labelId="project-department"
+                label="Department"
+                value={departmentId}
+                onChange={(event) => {
+                  setDepartmentId(event.target.value);
+                  setPage(0);
+                }}
+              >
+                <MenuItem value="">All departments</MenuItem>
+                {visibleDepartments.map((department) => (
+                  <MenuItem key={department.id} value={department.id}>
+                    {department.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
           <FormControl sx={{ minWidth: 160 }}>
             <InputLabel id="project-status">Status</InputLabel>
             <Select
@@ -292,17 +293,19 @@ export function ProjectsPage() {
             value={form.watch('departmentId') ?? ''}
             onChange={(event) => form.setValue('departmentId', event.target.value)}
           >
-            <MenuItem value="">Select department</MenuItem>
+            {isDepartmentScoped ? null : <MenuItem value="">Select department</MenuItem>}
             {(departments.data ?? []).map((department) => (
-              <MenuItem key={department.id} value={department.id}>
+              <MenuItem key={department.id} value={department.id} disabled={isDepartmentScoped && department.id !== profile?.departmentIds[0]}>
                 {districtName(districts.data ?? [], department.districtId)} — {department.name}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
-        <TextField label="Name" {...form.register('name')} required />
-        <TextField label="Financial year" type="number" {...form.register('financialYear')} />
-        <TextField label="Sanctioned amount" {...form.register('sanctionedAmount')} />
+        <TextField label="Name" {...form.register('name')} required error={Boolean(form.formState.errors.name)} helperText={form.formState.errors.name?.message} />
+        <TextField label="Financial year" type="number" {...form.register('financialYear')} error={Boolean(form.formState.errors.financialYear)} helperText={form.formState.errors.financialYear?.message} />
+        <TextField label="Sanctioned amount" {...form.register('sanctionedAmount')} error={Boolean(form.formState.errors.sanctionedAmount)} helperText={form.formState.errors.sanctionedAmount?.message} />
+        <TextField label="Released amount" {...form.register('releasedAmount')} />
+        <TextField label="Contractor" {...form.register('contractor')} />
         <FormControl fullWidth>
           <InputLabel id="create-impl">Implementing agency</InputLabel>
           <Select
@@ -338,7 +341,8 @@ export function ProjectsPage() {
         <TextField label="Location" {...form.register('locationText')} />
         <TextField label="Description" multiline minRows={2} {...form.register('description')} />
         <TextField label="Start date" type="date" InputLabelProps={{ shrink: true }} {...form.register('startDate')} />
-        <TextField label="End date" type="date" InputLabelProps={{ shrink: true }} {...form.register('endDate')} />
+        <TextField label="End date" type="date" InputLabelProps={{ shrink: true }} {...form.register('endDate')} error={Boolean(form.formState.errors.endDate)} helperText={form.formState.errors.endDate?.message} />
+        <TextField label="Expected completion" type="date" InputLabelProps={{ shrink: true }} {...form.register('expectedCompletion')} />
       </FormDialog>
 
       <FormDialog
@@ -349,18 +353,24 @@ export function ProjectsPage() {
           if (!editing) {
             return;
           }
+          const parsed = projectUpdateSchema.safeParse({
+            name: editing.name,
+            status: editing.status,
+            sanctionedAmount: editing.sanctionedAmount ?? '',
+            locationText: editing.locationText ?? '',
+            description: editing.description ?? '',
+          });
+          if (!parsed.success) {
+            return;
+          }
           update.mutate({
             id: editing.id,
             body: {
-              name: editing.name,
-              description: editing.description,
-              locationText: editing.locationText,
-              status: editing.status,
-              sanctionedAmount: editing.sanctionedAmount === null ? null : Number(editing.sanctionedAmount),
-              implementingAgencyId: editing.implementingAgencyId,
-              executingAgencyId: editing.executingAgencyId,
-              startDate: editing.startDate,
-              endDate: editing.endDate,
+              name: parsed.data.name,
+              description: parsed.data.description || undefined,
+              locationText: parsed.data.locationText || undefined,
+              status: parsed.data.status,
+              sanctionedAmount: parsed.data.sanctionedAmount ? Number(parsed.data.sanctionedAmount) : null,
             },
           });
         }}

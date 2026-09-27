@@ -24,6 +24,13 @@ export class MeetingsController {
     return this.meetings.list(auth, query.districtId);
   }
 
+  @Get(':id')
+  @RequirePermissions('meeting:manage')
+  @ApiOperation({ summary: 'DC review meeting with actions grouped by department' })
+  getById(@CurrentUser() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.meetings.getById(auth, id);
+  }
+
   @Post()
   @RequirePermissions('meeting:manage')
   create(@CurrentUser() auth: AuthContext, @Body() body: CreateMeetingDto) {

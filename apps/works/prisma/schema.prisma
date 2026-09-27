@@ -24,6 +24,130 @@ enum ProgressStatus {
   COMPLETED
 }
 
+enum SchemeFunding {
+  CENTRAL
+  STATE
+  DISTRICT
+  CSS
+}
+
+enum SchemeDomain {
+  INFRASTRUCTURE
+  WATER
+  HOUSING
+  HEALTH
+  EDUCATION
+  SOCIAL_WELFARE
+  EMPLOYMENT
+  AGRICULTURE
+  OTHER
+}
+
+enum KpiFrequency {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum ProjectCategory {
+  ROAD
+  BRIDGE
+  CULVERT
+  WATER
+  BUILDING
+  OTHER
+}
+
+enum WorkType {
+  NH
+  PWD
+  RWD
+  PMGSY
+  OTHER
+}
+
+model Scheme {
+  id            String        @id @default(uuid()) @db.Uuid
+  districtId    String        @map("district_id") @db.Uuid
+  departmentId  String        @map("department_id") @db.Uuid
+  code          String        @db.VarChar(64)
+  name          String        @db.VarChar(300)
+  funding       SchemeFunding @default(CENTRAL)
+  domain        SchemeDomain  @default(OTHER)
+  officerName   String?       @map("officer_name") @db.VarChar(200)
+  remarks       String?
+  targetValue   Decimal?      @map("target_value") @db.Decimal(14, 2)
+  targetUnit    String?       @map("target_unit") @db.VarChar(40)
+  isActive      Boolean       @default(true) @map("is_active")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  createdById   String?       @map("created_by_id") @db.Uuid
+  updatedById   String?       @map("updated_by_id") @db.Uuid
+  kpis          SchemeKpi[]
+  projects      Project[]
+  beneficiaries BeneficiarySnapshot[]
+
+  @@unique([districtId, code])
+  @@index([districtId, departmentId])
+  @@index([domain])
+  @@map("schemes")
+}
+
+model SchemeKpi {
+  id              String       @id @default(uuid()) @db.Uuid
+  schemeId        String       @map("scheme_id") @db.Uuid
+  scheme          Scheme       @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+  name            String       @db.VarChar(200)
+  unit            String       @db.VarChar(40)
+  target          Decimal      @db.Decimal(14, 2)
+  frequency       KpiFrequency @default(MONTHLY)
+  greenThreshold  Decimal      @default(90) @map("green_threshold") @db.Decimal(5, 2)
+  amberThreshold  Decimal      @default(70) @map("amber_threshold") @db.Decimal(5, 2)
+  isActive        Boolean      @default(true) @map("is_active")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  progress        SchemeProgress[]
+
+  @@index([schemeId])
+  @@map("scheme_kpis")
+}
+
+model SchemeProgress {
+  id                String    @id @default(uuid()) @db.Uuid
+  kpiId             String    @map("kpi_id") @db.Uuid
+  kpi               SchemeKpi @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  periodYm          String    @map("period_ym") @db.VarChar(7)
+  target            Decimal   @db.Decimal(14, 2)
+  achievement       Decimal   @db.Decimal(14, 2)
+  physicalPercent   Decimal   @map("physical_percent") @db.Decimal(5, 2)
+  financialPercent  Decimal?  @map("financial_percent") @db.Decimal(5, 2)
+  fundAllocated     Decimal?  @map("fund_allocated") @db.Decimal(14, 2)
+  fundReleased      Decimal?  @map("fund_released") @db.Decimal(14, 2)
+  expenditure       Decimal?  @db.Decimal(14, 2)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  createdById       String    @map("created_by_id") @db.Uuid
+
+  @@unique([kpiId, periodYm])
+  @@index([periodYm])
+  @@map("scheme_progress")
+}
+
+model BeneficiarySnapshot {
+  id            String   @id @default(uuid()) @db.Uuid
+  schemeId      String   @map("scheme_id") @db.Uuid
+  scheme        Scheme   @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+  locationId    String?  @map("location_id") @db.Uuid
+  periodYm      String   @map("period_ym") @db.VarChar(7)
+  target        Decimal  @db.Decimal(14, 2)
+  beneficiaries Decimal  @db.Decimal(14, 2)
+  male          Decimal? @db.Decimal(14, 2)
+  female        Decimal? @db.Decimal(14, 2)
+  others        Decimal? @db.Decimal(14, 2)
+
+  @@unique([schemeId, locationId, periodYm])
+  @@index([schemeId, periodYm])
+  @@map("beneficiaries")
+}
+
 model Project {
   id                   String             @id @default(uuid()) @db.Uuid
   code                 String             @unique @db.VarChar(64)
@@ -31,13 +155,21 @@ model Project {
   description          String?
   districtId           String             @map("district_id") @db.Uuid
   departmentId         String             @map("department_id") @db.Uuid
+  schemeId             String?            @map("scheme_id") @db.Uuid
+  scheme               Scheme?            @relation(fields: [schemeId], references: [id])
   implementingAgencyId String?            @map("implementing_agency_id") @db.Uuid
   executingAgencyId    String?            @map("executing_agency_id") @db.Uuid
   financialYear        Int                @map("financial_year")
   sanctionedAmount     Decimal?           @map("sanctioned_amount") @db.Decimal(14, 2)
+  releasedAmount       Decimal?           @map("released_amount") @db.Decimal(14, 2)
   status               ProjectStatus      @default(DRAFT)
+  category             ProjectCategory? 
+  workType             WorkType?          @map("work_type")
+  contractor           String?            @db.VarChar(200)
   startDate            DateTime?          @map("start_date") @db.Date
   endDate              DateTime?          @map("end_date") @db.Date
+  expectedCompletion   DateTime?          @map("expected_completion") @db.Date
+  locationId           String?            @map("location_id") @db.Uuid
   locationText         String?            @map("location_text") @db.VarChar(300)
   isActive             Boolean            @default(true) @map("is_active")
   createdAt            DateTime           @default(now()) @map("created_at")
@@ -48,6 +180,8 @@ model Project {
   documents            ProjectDocument[]
 
   @@index([districtId, departmentId])
+  @@index([schemeId])
+  @@index([locationId])
   @@index([status])
   @@map("projects")
 }

@@ -29,6 +29,11 @@ export class CreateMeetingDto {
   @IsString()
   @MaxLength(4000)
   notes?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  nextReviewAt?: string;
 }
 
 export class UpdateMeetingDto {
@@ -58,4 +63,9 @@ export class UpdateMeetingDto {
   @IsOptional()
   @IsEnum(MeetingStatus)
   status?: MeetingStatus;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  nextReviewAt?: string | null;
 }

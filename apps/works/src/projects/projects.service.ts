@@ -125,9 +125,16 @@ export class ProjectsService {
           financialYear: year,
           sanctionedAmount:
             dto.sanctionedAmount === undefined ? undefined : new Prisma.Decimal(dto.sanctionedAmount),
+          releasedAmount: dto.releasedAmount === undefined ? undefined : new Prisma.Decimal(dto.releasedAmount),
+          schemeId: dto.schemeId,
+          locationId: dto.locationId,
+          category: dto.category,
+          workType: dto.workType,
+          contractor: dto.contractor?.trim(),
           locationText: dto.locationText?.trim(),
           startDate: dto.startDate ? new Date(dto.startDate) : undefined,
           endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+          expectedCompletion: dto.expectedCompletion ? new Date(dto.expectedCompletion) : undefined,
           createdById: auth.userId,
           updatedById: auth.userId,
         },
@@ -161,10 +168,27 @@ export class ProjectsService {
             : dto.sanctionedAmount === null
               ? null
               : new Prisma.Decimal(dto.sanctionedAmount),
+        releasedAmount:
+          dto.releasedAmount === undefined
+            ? undefined
+            : dto.releasedAmount === null
+              ? null
+              : new Prisma.Decimal(dto.releasedAmount),
+        schemeId: dto.schemeId === undefined ? undefined : dto.schemeId,
+        locationId: dto.locationId === undefined ? undefined : dto.locationId,
+        category: dto.category === undefined ? undefined : dto.category,
+        workType: dto.workType === undefined ? undefined : dto.workType,
+        contractor: dto.contractor === undefined ? undefined : dto.contractor?.trim() ?? null,
         status: dto.status,
         locationText: dto.locationText === undefined ? undefined : dto.locationText?.trim() ?? null,
         startDate: dto.startDate === undefined ? undefined : dto.startDate ? new Date(dto.startDate) : null,
         endDate: dto.endDate === undefined ? undefined : dto.endDate ? new Date(dto.endDate) : null,
+        expectedCompletion:
+          dto.expectedCompletion === undefined
+            ? undefined
+            : dto.expectedCompletion
+              ? new Date(dto.expectedCompletion)
+              : null,
         updatedById: auth.userId,
       },
       select: this.select(),
@@ -174,14 +198,18 @@ export class ProjectsService {
 
   private serialize<T extends {
     sanctionedAmount: { toString(): string } | null;
+    releasedAmount?: { toString(): string } | null;
     startDate: Date | null;
     endDate: Date | null;
+    expectedCompletion?: Date | null;
   }>(row: T) {
     return {
       ...row,
       sanctionedAmount: row.sanctionedAmount === null ? null : row.sanctionedAmount.toString(),
+      releasedAmount: row.releasedAmount == null ? null : row.releasedAmount.toString(),
       startDate: row.startDate ? row.startDate.toISOString().slice(0, 10) : null,
       endDate: row.endDate ? row.endDate.toISOString().slice(0, 10) : null,
+      expectedCompletion: row.expectedCompletion ? row.expectedCompletion.toISOString().slice(0, 10) : null,
     };
   }
 
@@ -197,9 +225,16 @@ export class ProjectsService {
       executingAgencyId: true,
       financialYear: true,
       sanctionedAmount: true,
+      releasedAmount: true,
+      schemeId: true,
+      locationId: true,
+      category: true,
+      workType: true,
+      contractor: true,
       status: true,
       startDate: true,
       endDate: true,
+      expectedCompletion: true,
       locationText: true,
       isActive: true,
       createdAt: true,

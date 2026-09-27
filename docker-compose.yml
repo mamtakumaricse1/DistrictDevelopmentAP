@@ -1,7 +1,28 @@
+# Full local stack: Postgres, Keycloak, five APIs, gateway, and web.
+# Start Docker Desktop, then from this directory:
+#   docker compose up --build -d
+# Open http://localhost:8081  Keycloak: http://localhost:8180
+
 x-app-runtime: &app-runtime
   restart: unless-stopped
   init: true
   stop_grace_period: 20s
+
+# Browser and JWT `iss` use localhost. Containers fetch JWKS from the Keycloak service name.
+x-keycloak-client: &keycloak-client
+  KEYCLOAK_URL: http://localhost:8180
+  KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+  KEYCLOAK_SYSTEM_REALM: system
+  KEYCLOAK_API_AUDIENCE: ddwmd-api
+  KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+
+x-jwt-service: &jwt-service
+  <<: *app-runtime
+  depends_on:
+    postgres:
+      condition: service_healthy
+    keycloak:
+      condition: service_healthy
 
 services:
   postgres:
@@ -18,25 +39,33 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./deploy/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dashboard"]
+      test: ["CMD-SHELL", "pg_isready -U dashboard -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.1
-    profiles: ["idp"]
     <<: *app-runtime
     command: start-dev --import-realm
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: "8180"
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
     ports:
-      - "8080:8080"
+      - "8180:8080"
     volumes:
       - ./deploy/keycloak/import:/opt/keycloak/data/import
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
 
   identity:
     build:
@@ -45,12 +74,9 @@ services:
       args:
         SERVICE: identity
         PORT: "3001"
-    profiles: ["stack"]
-    <<: *app-runtime
-    depends_on:
-      postgres:
-        condition: service_healthy
+    <<: *jwt-service
     environment:
+      <<: *keycloak-client
       NODE_ENV: production
       IDENTITY_PORT: 3001
       API_PREFIX: api/v1
@@ -63,10 +89,7 @@ services:
       PRISMA_CONNECTION_LIMIT: "10"
       PRISMA_POOL_TIMEOUT: "10"
       IDENTITY_DATABASE_URL: postgresql://dashboard:dashboard@postgres:5432/district_identity?schema=public
-      KEYCLOAK_URL: http://keycloak:8080
-      KEYCLOAK_SYSTEM_REALM: system
-      KEYCLOAK_API_AUDIENCE: ddwmd-api
-      KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+      RUN_PRISMA_SEED: "true"
     ports:
       - "3001:3001"
     healthcheck:
@@ -80,7 +103,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 40s
+      start_period: 90s
 
   organization:
     build:
@@ -89,12 +112,9 @@ services:
       args:
         SERVICE: organization
         PORT: "3002"
-    profiles: ["stack"]
-    <<: *app-runtime
-    depends_on:
-      postgres:
-        condition: service_healthy
+    <<: *jwt-service
     environment:
+      <<: *keycloak-client
       NODE_ENV: production
       ORGANIZATION_PORT: 3002
       API_PREFIX: api/v1
@@ -106,10 +126,7 @@ services:
       PRISMA_CONNECTION_LIMIT: "10"
       PRISMA_POOL_TIMEOUT: "10"
       ORGANIZATION_DATABASE_URL: postgresql://dashboard:dashboard@postgres:5432/district_organization?schema=public
-      KEYCLOAK_URL: http://keycloak:8080
-      KEYCLOAK_SYSTEM_REALM: system
-      KEYCLOAK_API_AUDIENCE: ddwmd-api
-      KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+      RUN_PRISMA_SEED: "true"
     ports:
       - "3002:3002"
     healthcheck:
@@ -123,7 +140,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 40s
+      start_period: 90s
 
   works:
     build:
@@ -132,12 +149,9 @@ services:
       args:
         SERVICE: works
         PORT: "3003"
-    profiles: ["stack"]
-    <<: *app-runtime
-    depends_on:
-      postgres:
-        condition: service_healthy
+    <<: *jwt-service
     environment:
+      <<: *keycloak-client
       NODE_ENV: production
       WORKS_PORT: 3003
       API_PREFIX: api/v1
@@ -155,10 +169,7 @@ services:
       NOTIFY_URL: http://notify:3005
       STORAGE_ROOT: /var/dashboard/storage
       STORAGE_PROVIDER: local
-      KEYCLOAK_URL: http://keycloak:8080
-      KEYCLOAK_SYSTEM_REALM: system
-      KEYCLOAK_API_AUDIENCE: ddwmd-api
-      KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+      RUN_PRISMA_SEED: "true"
     ports:
       - "3003:3003"
     volumes:
@@ -174,7 +185,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 40s
+      start_period: 90s
 
   governance:
     build:
@@ -183,12 +194,9 @@ services:
       args:
         SERVICE: governance
         PORT: "3004"
-    profiles: ["stack"]
-    <<: *app-runtime
-    depends_on:
-      postgres:
-        condition: service_healthy
+    <<: *jwt-service
     environment:
+      <<: *keycloak-client
       NODE_ENV: production
       GOVERNANCE_PORT: 3004
       API_PREFIX: api/v1
@@ -203,10 +211,7 @@ services:
       PRISMA_CONNECTION_LIMIT: "10"
       PRISMA_POOL_TIMEOUT: "10"
       GOVERNANCE_DATABASE_URL: postgresql://dashboard:dashboard@postgres:5432/district_governance?schema=public
-      KEYCLOAK_URL: http://keycloak:8080
-      KEYCLOAK_SYSTEM_REALM: system
-      KEYCLOAK_API_AUDIENCE: ddwmd-api
-      KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+      RUN_PRISMA_SEED: "true"
     ports:
       - "3004:3004"
     healthcheck:
@@ -220,7 +225,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 40s
+      start_period: 90s
 
   notify:
     build:
@@ -229,12 +234,9 @@ services:
       args:
         SERVICE: notify
         PORT: "3005"
-    profiles: ["stack"]
-    <<: *app-runtime
-    depends_on:
-      postgres:
-        condition: service_healthy
+    <<: *jwt-service
     environment:
+      <<: *keycloak-client
       NODE_ENV: production
       NOTIFY_PORT: 3005
       API_PREFIX: api/v1
@@ -248,10 +250,7 @@ services:
       PRISMA_CONNECTION_LIMIT: "10"
       PRISMA_POOL_TIMEOUT: "10"
       NOTIFY_DATABASE_URL: postgresql://dashboard:dashboard@postgres:5432/district_notify?schema=public
-      KEYCLOAK_URL: http://keycloak:8080
-      KEYCLOAK_SYSTEM_REALM: system
-      KEYCLOAK_API_AUDIENCE: ddwmd-api
-      KEYCLOAK_WEB_CLIENT_ID: ddwmd-web
+      RUN_PRISMA_SEED: "true"
     ports:
       - "3005:3005"
     healthcheck:
@@ -265,7 +264,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 40s
+      start_period: 90s
 
   gateway:
     build:
@@ -274,7 +273,6 @@ services:
       args:
         SERVICE: gateway
         PORT: "3000"
-    profiles: ["stack"]
     <<: *app-runtime
     depends_on:
       identity:
@@ -282,11 +280,11 @@ services:
       organization:
         condition: service_healthy
       works:
-        condition: service_started
+        condition: service_healthy
       governance:
-        condition: service_started
+        condition: service_healthy
       notify:
-        condition: service_started
+        condition: service_healthy
     environment:
       NODE_ENV: production
       GATEWAY_PORT: 3000
@@ -319,13 +317,20 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    profiles: ["stack"]
     <<: *app-runtime
     depends_on:
       gateway:
         condition: service_healthy
+      keycloak:
+        condition: service_healthy
     ports:
       - "8081:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
 
 volumes:
   pgdata:

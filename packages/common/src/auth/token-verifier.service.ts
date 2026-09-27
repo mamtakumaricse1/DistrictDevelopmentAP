@@ -65,9 +65,23 @@ export class TokenVerifierService {
     if (cached) {
       return cached;
     }
-    const jwks = createRemoteJWKSet(new URL(`${issuer}/protocol/openid-connect/certs`));
+    const jwks = createRemoteJWKSet(new URL(`${this.jwksIssuer(issuer)}/protocol/openid-connect/certs`));
     this.jwksCache.set(issuer, jwks);
     return jwks;
+  }
+
+  // Tokens keep a browser issuer (localhost). Containers fetch certs from KEYCLOAK_INTERNAL_URL.
+  private jwksIssuer(issuer: string): string {
+    const publicBase = this.issuers.normalize(
+      this.config.get<string>('KEYCLOAK_URL') ?? 'http://localhost:8080',
+    );
+    const internalBase = this.issuers.normalize(
+      this.config.get<string>('KEYCLOAK_INTERNAL_URL') ?? publicBase,
+    );
+    if (internalBase !== publicBase && issuer.startsWith(publicBase)) {
+      return `${internalBase}${issuer.slice(publicBase.length)}`;
+    }
+    return issuer;
   }
 
   private audienceOk(payload: JWTPayload): boolean {

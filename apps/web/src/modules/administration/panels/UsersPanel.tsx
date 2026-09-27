@@ -30,6 +30,7 @@ const schema = z.object({
   phone: z.string().max(20).optional(),
   roleCode: z.string().min(1),
   districtId: z.string().optional(),
+  departmentId: z.string().optional(),
   keycloakIssuer: z.string().min(8).max(300),
 });
 
@@ -37,6 +38,7 @@ export function UsersPanel() {
   const { profile } = useAuth();
   const client = useQueryClient();
   const districts = useQuery({ queryKey: ['admin', 'districts'], queryFn: adminApi.districts });
+  const departments = useQuery({ queryKey: ['admin', 'departments'], queryFn: () => adminApi.departments() });
   const users = useQuery({ queryKey: ['admin', 'users'], queryFn: () => adminApi.users() });
   const roles = useQuery({ queryKey: ['admin', 'roles'], queryFn: adminApi.roles });
   const [createOpen, setCreateOpen] = useState(false);
@@ -65,6 +67,7 @@ export function UsersPanel() {
       adminApi.createUser({
         ...values,
         districtId: values.roleCode === 'SUPER_ADMIN' ? undefined : values.districtId || undefined,
+        departmentIds: values.departmentId ? [values.departmentId] : undefined,
         phone: values.phone || undefined,
       }),
     onSuccess: async () => {
@@ -173,6 +176,25 @@ export function UsersPanel() {
                   {district.name}
                 </MenuItem>
               ))}
+            </Select>
+          </FormControl>
+        ) : null}
+        {['DEPARTMENT_USER', 'DATA_ENTRY', 'BDO'].includes(form.watch('roleCode')) ? (
+          <FormControl fullWidth>
+            <InputLabel id="user-department">Department</InputLabel>
+            <Select
+              labelId="user-department"
+              label="Department"
+              value={form.watch('departmentId') ?? ''}
+              onChange={(event) => form.setValue('departmentId', event.target.value)}
+            >
+              {(departments.data ?? [])
+                .filter((department) => !form.watch('districtId') || department.districtId === form.watch('districtId'))
+                .map((department) => (
+                  <MenuItem key={department.id} value={department.id}>
+                    {department.name}
+                  </MenuItem>
+                ))}
             </Select>
           </FormControl>
         ) : null}
