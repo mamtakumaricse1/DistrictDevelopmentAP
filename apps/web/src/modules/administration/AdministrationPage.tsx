@@ -1,5 +1,6 @@
 import { Paper, Tab, Tabs } from '@mui/material';
 import { useState } from 'react';
+import { choosesDistrict } from '../../auth/districtScope';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
 import { AgenciesPanel } from './panels/AgenciesPanel';
@@ -14,9 +15,9 @@ import { LocationsPanel } from './panels/LocationsPanel';
 type TabId = 'districts' | 'departments' | 'agencies' | 'locations' | 'users' | 'roles' | 'master' | 'settings';
 
 export function AdministrationPage() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, profile } = useAuth();
   const tabs: Array<{ id: TabId; label: string; show: boolean }> = [
-    { id: 'districts', label: 'Districts', show: hasPermission('district:read') },
+    { id: 'districts', label: 'Districts', show: Boolean(profile?.isSuperAdmin) && hasPermission('district:read') },
     { id: 'departments', label: 'Departments', show: hasPermission('district:read') },
     { id: 'agencies', label: 'Agencies', show: hasPermission('district:read') },
     { id: 'locations', label: 'Locations', show: hasPermission('district:read') },
@@ -32,7 +33,11 @@ export function AdministrationPage() {
     <>
       <PageHeader
         title="Administration"
-        description="Districts, departments, agencies, users, roles, master data, and settings. District names come from data — they are not compiled into the application."
+        description={
+          profile?.isSuperAdmin
+            ? 'Districts, departments, agencies, users, roles, master data, and settings.'
+            : 'Departments, offices, users, and settings.'
+        }
       />
       <Paper sx={{ p: 2 }}>
         <Tabs

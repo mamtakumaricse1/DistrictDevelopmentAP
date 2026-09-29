@@ -23,7 +23,7 @@ export function BlocksPage() {
     <>
       <PageHeader
         title="Block dashboard"
-        description="Changlang | Miao | Jairampur | Nampong | Khimyang and other blocks. Drill to village → scheme → project."
+        description="Blocks in this district. Open a block to see its villages, schemes, and projects."
       />
       <Stack spacing={2}>
         <DistrictMap locations={locations.data ?? []} mapPoints={mapPoints.data ?? []} height={280} />

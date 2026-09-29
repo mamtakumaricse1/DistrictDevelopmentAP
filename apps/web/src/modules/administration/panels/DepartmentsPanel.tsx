@@ -21,6 +21,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { UUID_LIKE } from '../../../lib/ids';
+import { choosesDistrict } from '../../../auth/districtScope';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi, type DepartmentRecord } from '../../../services/api/admin';
 import { districtName } from './labels';
@@ -45,6 +46,7 @@ export function DepartmentsPanel() {
   const [editing, setEditing] = useState<DepartmentRecord | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const defaultDistrictId = profile?.isSuperAdmin ? '' : (profile?.districtIds[0] ?? '');
+  const showDistrict = choosesDistrict(profile);
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -79,7 +81,7 @@ export function DepartmentsPanel() {
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>District</TableCell>
+            {showDistrict ? <TableCell>District</TableCell> : null}
             <TableCell>Code</TableCell>
             <TableCell>Name</TableCell>
             <TableCell>Active</TableCell>
@@ -89,7 +91,7 @@ export function DepartmentsPanel() {
         <TableBody>
           {(departments.data ?? []).map((row) => (
             <TableRow key={row.id}>
-              <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell>
+              {showDistrict ? <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell> : null}
               <TableCell>{row.code}</TableCell>
               <TableCell>{row.shortName ? `${row.name} (${row.shortName})` : row.name}</TableCell>
               <TableCell>{row.isActive ? 'Yes' : 'No'}</TableCell>
@@ -112,22 +114,24 @@ export function DepartmentsPanel() {
         onSubmit={form.handleSubmit((values) => create.mutate(values))}
         error={create.error}
       >
-        <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
-          <InputLabel id="dept-district">District</InputLabel>
-          <Select
-            labelId="dept-district"
-            label="District"
-            value={form.watch('districtId')}
-            onChange={(event) => form.setValue('districtId', event.target.value, { shouldValidate: true })}
-          >
-            {(districts.data ?? []).map((district) => (
-              <MenuItem key={district.id} value={district.id}>
-                {district.name}
-              </MenuItem>
-            ))}
-          </Select>
-          {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
-        </FormControl>
+        {showDistrict ? (
+          <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
+            <InputLabel id="dept-district">District</InputLabel>
+            <Select
+              labelId="dept-district"
+              label="District"
+              value={form.watch('districtId')}
+              onChange={(event) => form.setValue('districtId', event.target.value, { shouldValidate: true })}
+            >
+              {(districts.data ?? []).map((district) => (
+                <MenuItem key={district.id} value={district.id}>
+                  {district.name}
+                </MenuItem>
+              ))}
+            </Select>
+            {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
+          </FormControl>
+        ) : null}
         <TextField label="Code" required {...fieldState(form, 'code')} />
         <TextField label="Name" required {...fieldState(form, 'name')} />
         <TextField label="Short name" {...fieldState(form, 'shortName')} />

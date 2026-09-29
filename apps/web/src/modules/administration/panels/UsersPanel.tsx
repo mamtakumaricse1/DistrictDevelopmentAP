@@ -16,10 +16,11 @@ import {
   TextField,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { choosesDistrict } from '../../../auth/districtScope';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi, type UserRecord } from '../../../services/api/admin';
 import { districtName } from './labels';
@@ -50,6 +51,7 @@ export function UsersPanel() {
   const [editing, setEditing] = useState<UserRecord | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const defaultDistrictId = profile?.isSuperAdmin ? '' : (profile?.districtIds[0] ?? '');
+  const showDistrict = choosesDistrict(profile);
   const defaultIssuer =
     districts.data?.find((district) => district.id === defaultDistrictId)?.keycloakIssuer ?? profile?.issuer ?? '';
 
@@ -67,6 +69,12 @@ export function UsersPanel() {
     () => districts.data?.find((district) => district.id === selectedDistrictId)?.keycloakIssuer,
     [districts.data, selectedDistrictId],
   );
+
+  useEffect(() => {
+    if (defaultIssuer && !form.getValues('keycloakIssuer')) {
+      form.setValue('keycloakIssuer', defaultIssuer);
+    }
+  }, [defaultIssuer, form]);
 
   const create = useMutation({
     mutationFn: (values: z.infer<typeof schema>) =>
@@ -110,7 +118,7 @@ export function UsersPanel() {
             <TableCell>Name</TableCell>
             <TableCell>Email</TableCell>
             <TableCell>Role</TableCell>
-            <TableCell>District</TableCell>
+            {showDistrict ? <TableCell>District</TableCell> : null}
             <TableCell>Active</TableCell>
             <TableCell />
           </TableRow>
@@ -121,9 +129,11 @@ export function UsersPanel() {
               <TableCell>{row.displayName}</TableCell>
               <TableCell>{row.email}</TableCell>
               <TableCell>{row.roles.map((item) => item.role.code).join(', ')}</TableCell>
-              <TableCell>
-                {row.roles.map((item) => districtName(districts.data ?? [], item.districtId)).join(', ')}
-              </TableCell>
+              {showDistrict ? (
+                <TableCell>
+                  {row.roles.map((item) => districtName(districts.data ?? [], item.districtId)).join(', ')}
+                </TableCell>
+              ) : null}
               <TableCell>{row.isActive ? 'Yes' : 'No'}</TableCell>
               <TableCell>
                 <Button size="small" onClick={() => setEditing(row)}>
@@ -163,7 +173,7 @@ export function UsersPanel() {
               ))}
           </Select>
         </FormControl>
-        {form.watch('roleCode') !== 'SUPER_ADMIN' ? (
+        {form.watch('roleCode') !== 'SUPER_ADMIN' && showDistrict ? (
           <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
             <InputLabel id="user-district">District</InputLabel>
             <Select
@@ -206,12 +216,14 @@ export function UsersPanel() {
             </Select>
           </FormControl>
         ) : null}
-        <TextField
-          label="Keycloak issuer"
-          required
-          helperText={form.formState.errors.keycloakIssuer?.message ?? (issuerHint ? `Suggested: ${issuerHint}` : 'Must match the Keycloak realm. No password is stored here.')}
-          {...fieldState(form, 'keycloakIssuer')}
-        />
+        {showDistrict ? (
+          <TextField
+            label="Keycloak issuer"
+            required
+            helperText={form.formState.errors.keycloakIssuer?.message ?? (issuerHint ? `Suggested: ${issuerHint}` : 'Must match the Keycloak realm. No password is stored here.')}
+            {...fieldState(form, 'keycloakIssuer')}
+          />
+        ) : null}
       </FormDialog>
 
       <FormDialog

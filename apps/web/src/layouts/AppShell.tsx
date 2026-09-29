@@ -38,6 +38,7 @@ import { govColors } from '../app/theme';
 import { useAuth } from '../auth/AuthProvider';
 import { GovSeal } from '../components/GovSeal';
 import { TricolorStrip } from '../components/TricolorStrip';
+import { adminApi } from '../services/api/admin';
 import { notificationsApi } from '../services/api/notifications';
 
 const DRAWER_WIDTH = 260;
@@ -77,7 +78,20 @@ export function AppShell() {
     queryFn: notificationsApi.list,
     enabled: Boolean(notifyAnchor) && hasPermission('notification:read'),
   });
-  const title = import.meta.env.VITE_APP_TITLE ?? 'District Development Works Monitoring';
+  const districts = useQuery({
+    queryKey: ['admin', 'districts'],
+    queryFn: adminApi.districts,
+  });
+  const homeDistrict = profile?.isSuperAdmin
+    ? undefined
+    : districts.data?.find((district) => profile?.districtIds.includes(district.id)) ??
+      (profile?.districtIds.length === 1 ? districts.data?.[0] : undefined);
+  const districtName = homeDistrict?.name;
+  const title = districtName
+    ? isCitizen
+      ? `${districtName} public dashboard`
+      : `${districtName} District Dashboard`
+    : (import.meta.env.VITE_APP_TITLE ?? 'District Development Works Monitoring');
   const visibleNav = isCitizen
     ? []
     : NAV_ITEMS.filter((item) => {
@@ -99,7 +113,7 @@ export function AppShell() {
             ARUNACHAL PRADESH
           </Typography>
           <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2}>
-            {isCitizen ? 'Public view' : isDepartmentScoped ? 'Department desk' : 'DC Dashboard'}
+            {districtName ?? (isCitizen ? 'Public view' : isDepartmentScoped ? 'Department desk' : 'DC Dashboard')}
           </Typography>
         </Box>
       </Toolbar>
@@ -143,7 +157,11 @@ export function AppShell() {
       </List>
       <Box sx={{ px: 2, py: 1.75, flexShrink: 0, borderTop: '1px solid rgba(196,163,90,0.35)' }}>
         <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.75)', letterSpacing: '0.04em' }}>
-          {isCitizen ? 'Public view · read only' : 'Govt. of Arunachal Pradesh'}
+          {districtName
+            ? isCitizen
+              ? `${districtName} · read only`
+              : `${districtName} District`
+            : 'Govt. of Arunachal Pradesh'}
         </Typography>
       </Box>
     </Box>

@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
+import { choosesDistrict } from '../../auth/districtScope';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusChip } from '../../components/StatusChip';
@@ -43,6 +44,7 @@ export function MeetingsPage() {
     const allowed = new Set(profile?.districtIds ?? []);
     return rows.filter((row) => allowed.has(row.id));
   }, [districts.data, profile]);
+  const showDistrict = choosesDistrict(profile);
 
   useEffect(() => {
     if (isUuidLike(districtId)) {
@@ -120,22 +122,24 @@ export function MeetingsPage() {
         error={create.error}
         onSubmit={form.handleSubmit((values) => create.mutate(values))}
       >
-        <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
-          <InputLabel id="meeting-district">District</InputLabel>
-          <Select
-            labelId="meeting-district"
-            label="District"
-            value={districtId}
-            onChange={(event) => form.setValue('districtId', event.target.value, { shouldValidate: true })}
-          >
-            {districtOptions.map((district) => (
-              <MenuItem key={district.id} value={district.id}>
-                {district.name}
-              </MenuItem>
-            ))}
-          </Select>
-          {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
-        </FormControl>
+        {showDistrict ? (
+          <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
+            <InputLabel id="meeting-district">District</InputLabel>
+            <Select
+              labelId="meeting-district"
+              label="District"
+              value={districtId}
+              onChange={(event) => form.setValue('districtId', event.target.value, { shouldValidate: true })}
+            >
+              {districtOptions.map((district) => (
+                <MenuItem key={district.id} value={district.id}>
+                  {district.name}
+                </MenuItem>
+              ))}
+            </Select>
+            {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
+          </FormControl>
+        ) : null}
         <TextField label="Title" required {...fieldState(form, 'title')} />
         <TextField label="Scheduled at" type="datetime-local" InputLabelProps={{ shrink: true }} required {...fieldState(form, 'scheduledAt')} />
         <TextField label="Venue" {...fieldState(form, 'venue')} />

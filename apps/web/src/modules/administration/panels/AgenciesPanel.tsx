@@ -21,6 +21,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { UUID_LIKE } from '../../../lib/ids';
+import { choosesDistrict } from '../../../auth/districtScope';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi, type AgencyRecord } from '../../../services/api/admin';
 import { districtName } from './labels';
@@ -45,6 +46,7 @@ export function AgenciesPanel() {
   const [editing, setEditing] = useState<AgencyRecord | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const defaultDistrictId = profile?.isSuperAdmin ? '' : (profile?.districtIds[0] ?? '');
+  const showDistrict = choosesDistrict(profile);
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -83,7 +85,7 @@ export function AgenciesPanel() {
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>District</TableCell>
+            {showDistrict ? <TableCell>District</TableCell> : null}
             <TableCell>Code</TableCell>
             <TableCell>Name</TableCell>
             <TableCell>Type</TableCell>
@@ -94,7 +96,7 @@ export function AgenciesPanel() {
         <TableBody>
           {(agencies.data ?? []).map((row) => (
             <TableRow key={row.id}>
-              <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell>
+              {showDistrict ? <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell> : null}
               <TableCell>{row.code}</TableCell>
               <TableCell>{row.name}</TableCell>
               <TableCell>{row.agencyType}</TableCell>
@@ -118,22 +120,24 @@ export function AgenciesPanel() {
         onSubmit={form.handleSubmit((values) => create.mutate(values))}
         error={create.error}
       >
-        <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
-          <InputLabel id="agency-district">District</InputLabel>
-          <Select
-            labelId="agency-district"
-            label="District"
-            value={form.watch('districtId')}
-            onChange={(event) => form.setValue('districtId', event.target.value)}
-          >
-            {(districts.data ?? []).map((district) => (
-              <MenuItem key={district.id} value={district.id}>
-                {district.name}
-              </MenuItem>
-            ))}
-          </Select>
-          {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
-        </FormControl>
+        {showDistrict ? (
+          <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
+            <InputLabel id="agency-district">District</InputLabel>
+            <Select
+              labelId="agency-district"
+              label="District"
+              value={form.watch('districtId')}
+              onChange={(event) => form.setValue('districtId', event.target.value)}
+            >
+              {(districts.data ?? []).map((district) => (
+                <MenuItem key={district.id} value={district.id}>
+                  {district.name}
+                </MenuItem>
+              ))}
+            </Select>
+            {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
+          </FormControl>
+        ) : null}
         <FormControl fullWidth>
           <InputLabel id="agency-dept">Department (optional)</InputLabel>
           <Select

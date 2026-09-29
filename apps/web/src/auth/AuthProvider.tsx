@@ -1,7 +1,8 @@
 import { User, UserManager } from 'oidc-client-ts';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { setAccessTokenProvider } from '../services/api/client';
-import { fetchMe, type MeResponse } from '../services/api/auth';
+import { fetchLoginOptions, fetchMe, type MeResponse } from '../services/api/auth';
+import { refreshStoredSession, signInWithPassword } from './passwordLogin';
 import {
   clearRememberedIssuer,
   createUserManager,
@@ -17,6 +18,7 @@ type AuthContextValue = {
   profile: MeResponse | null;
   error: string | null;
   login: (issuer: string) => Promise<void>;
+  loginWithPassword: (username: string, password: string) => Promise<void>;
   completeCallback: () => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
@@ -46,16 +48,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!issuer) {
         return token;
       }
-      const manager = createUserManager(issuer);
-      let current = await manager.getUser();
-      if (!current?.access_token || current.expired) {
-        try {
-          current = await manager.signinSilent();
-        } catch {
-          return token;
-        }
+      try {
+        const current = await refreshStoredSession(issuer);
+        return current?.access_token ?? token;
+      } catch {
+        return token;
       }
-      return current?.access_token ?? token;
     });
     setAccessToken(token);
     try {
@@ -84,11 +82,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void applyUser(user);
     };
     const onExpiring = () => {
-      void manager.signinSilent().then((renewed) => {
-        if (renewed) {
-          void applyUser(renewed);
-        }
-      });
+      void refreshStoredSession(issuer)
+        .then((renewed) => {
+          if (renewed) {
+            void applyUser(renewed);
+          }
+        })
+        .catch(() => undefined);
     };
     manager.events.addUserLoaded(onRenew);
     manager.events.addAccessTokenExpiring(onExpiring);
@@ -102,6 +102,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     rememberIssuer(issuer);
     await createUserManager(issuer).signinRedirect();
   }, []);
+
+  const loginWithPassword = useCallback(
+    async (username: string, password: string) => {
+      setError(null);
+      try {
+        const options = await fetchLoginOptions();
+        const { issuer, user } = await signInWithPassword(username.trim(), password, options);
+        rememberIssuer(issuer);
+        await applyUser(user);
+      } catch (err) {
+        clearRememberedIssuer();
+        const known = err instanceof Error ? err.message : '';
+        const message =
+          known === 'The username or password is not correct.'
+            ? known
+            : 'Could not sign in. Check the username and password, then try again.';
+        setError(message);
+        throw new Error(message);
+      }
+    },
+    [applyUser],
+  );
 
   const completeCallback = useCallback(async () => {
     const issuer = rememberedIssuer();
@@ -134,13 +156,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       error,
       login,
+      loginWithPassword,
       completeCallback,
       logout,
       hasPermission: (permission: string) => Boolean(profile?.permissions.includes(permission)),
       isDepartmentScoped: Boolean(profile && !profile.isSuperAdmin && profile.departmentIds.length > 0),
       isCitizen: Boolean(profile?.roles.some((role) => role.code === 'CITIZEN')),
     }),
-    [status, accessToken, profile, error, login, completeCallback, logout],
+    [status, accessToken, profile, error, login, loginWithPassword, completeCallback, logout],
   );
 
   return <AuthReactContext.Provider value={value}>{children}</AuthReactContext.Provider>;

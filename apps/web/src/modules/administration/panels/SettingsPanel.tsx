@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { choosesDistrict } from '../../../auth/districtScope';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi } from '../../../services/api/admin';
 import { districtName } from './labels';
@@ -36,6 +37,7 @@ export function SettingsPanel() {
   const settings = useQuery({ queryKey: ['admin', 'settings'], queryFn: () => adminApi.settings() });
   const [open, setOpen] = useState(false);
   const defaultDistrictId = profile?.isSuperAdmin ? '' : (profile?.districtIds[0] ?? '');
+  const showDistrict = choosesDistrict(profile);
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -67,7 +69,7 @@ export function SettingsPanel() {
             <TableCell>Key</TableCell>
             <TableCell>Value</TableCell>
             <TableCell>Type</TableCell>
-            <TableCell>Scope</TableCell>
+            {showDistrict ? <TableCell>Scope</TableCell> : null}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -76,7 +78,7 @@ export function SettingsPanel() {
               <TableCell>{row.key}</TableCell>
               <TableCell>{row.value}</TableCell>
               <TableCell>{row.valueType}</TableCell>
-              <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell>
+              {showDistrict ? <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell> : null}
             </TableRow>
           ))}
         </TableBody>
@@ -89,22 +91,24 @@ export function SettingsPanel() {
         onSubmit={form.handleSubmit((values) => upsert.mutate(values))}
         error={upsert.error}
       >
-        <FormControl fullWidth>
-          <InputLabel id="setting-district">Scope</InputLabel>
-          <Select
-            labelId="setting-district"
-            label="Scope"
-            value={form.watch('districtId') ?? ''}
-            onChange={(event) => form.setValue('districtId', event.target.value)}
-          >
-            {profile?.isSuperAdmin ? <MenuItem value="">Global</MenuItem> : null}
-            {(districts.data ?? []).map((district) => (
-              <MenuItem key={district.id} value={district.id}>
-                {district.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        {showDistrict ? (
+          <FormControl fullWidth>
+            <InputLabel id="setting-district">Scope</InputLabel>
+            <Select
+              labelId="setting-district"
+              label="Scope"
+              value={form.watch('districtId') ?? ''}
+              onChange={(event) => form.setValue('districtId', event.target.value)}
+            >
+              {profile?.isSuperAdmin ? <MenuItem value="">Global</MenuItem> : null}
+              {(districts.data ?? []).map((district) => (
+                <MenuItem key={district.id} value={district.id}>
+                  {district.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ) : null}
         <TextField label="Key" required {...fieldState(form, 'key')} />
         <TextField label="Value" required {...fieldState(form, 'value')} />
         <FormControl fullWidth>

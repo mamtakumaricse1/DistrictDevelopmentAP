@@ -19,6 +19,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { UUID_LIKE } from '../../../lib/ids';
+import { choosesDistrict } from '../../../auth/districtScope';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi } from '../../../services/api/admin';
 import { districtName } from './labels';
@@ -46,6 +47,7 @@ export function MasterDataPanel() {
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [itemOpen, setItemOpen] = useState(false);
   const defaultDistrictId = profile?.isSuperAdmin ? '' : (profile?.districtIds[0] ?? '');
+  const showDistrict = choosesDistrict(profile);
 
   const categoryForm = useForm<z.infer<typeof categorySchema>>({ resolver: zodResolver(categorySchema) });
   const itemForm = useForm<z.infer<typeof itemSchema>>({
@@ -92,7 +94,7 @@ export function MasterDataPanel() {
             <TableCell>Category</TableCell>
             <TableCell>Code</TableCell>
             <TableCell>Name</TableCell>
-            <TableCell>Scope</TableCell>
+            {showDistrict ? <TableCell>Scope</TableCell> : null}
             <TableCell>Active</TableCell>
           </TableRow>
         </TableHead>
@@ -102,7 +104,7 @@ export function MasterDataPanel() {
               <TableCell>{row.category.name}</TableCell>
               <TableCell>{row.code}</TableCell>
               <TableCell>{row.name}</TableCell>
-              <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell>
+              {showDistrict ? <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell> : null}
               <TableCell>{row.isActive ? 'Yes' : 'No'}</TableCell>
             </TableRow>
           ))}
@@ -143,22 +145,24 @@ export function MasterDataPanel() {
           </Select>
           {selectError(itemForm, 'categoryId') ? <FormHelperText>{selectError(itemForm, 'categoryId')}</FormHelperText> : null}
         </FormControl>
-        <FormControl fullWidth>
-          <InputLabel id="item-district">District scope</InputLabel>
-          <Select
-            labelId="item-district"
-            label="District scope"
-            value={itemForm.watch('districtId') ?? ''}
-            onChange={(event) => itemForm.setValue('districtId', event.target.value)}
-          >
-            {profile?.isSuperAdmin ? <MenuItem value="">All districts</MenuItem> : null}
-            {(districts.data ?? []).map((district) => (
-              <MenuItem key={district.id} value={district.id}>
-                {district.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        {showDistrict ? (
+          <FormControl fullWidth>
+            <InputLabel id="item-district">District scope</InputLabel>
+            <Select
+              labelId="item-district"
+              label="District scope"
+              value={itemForm.watch('districtId') ?? ''}
+              onChange={(event) => itemForm.setValue('districtId', event.target.value)}
+            >
+              {profile?.isSuperAdmin ? <MenuItem value="">All districts</MenuItem> : null}
+              {(districts.data ?? []).map((district) => (
+                <MenuItem key={district.id} value={district.id}>
+                  {district.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ) : null}
         <TextField label="Code" required {...fieldState(itemForm, 'code')} />
         <TextField label="Name" required {...fieldState(itemForm, 'name')} />
         <TextField label="Sort order" type="number" {...fieldState(itemForm, 'sortOrder')} />

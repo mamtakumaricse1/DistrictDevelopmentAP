@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { choosesDistrict } from '../../auth/districtScope';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusChip } from '../../components/StatusChip';
@@ -46,6 +47,7 @@ export function ActionsPage() {
     const allowed = new Set(profile?.districtIds ?? []);
     return rows.filter((row) => allowed.has(row.id));
   }, [districts.data, profile]);
+  const showDistrict = choosesDistrict(profile);
 
   useEffect(() => {
     if (isUuidLike(districtId)) {
@@ -151,22 +153,24 @@ export function ActionsPage() {
         error={create.error}
         onSubmit={form.handleSubmit((values) => create.mutate(values))}
       >
-        <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
-          <InputLabel id="action-district">District</InputLabel>
-          <Select
-            labelId="action-district"
-            label="District"
-            value={districtId}
-            onChange={(event) => form.setValue('districtId', event.target.value, { shouldValidate: true })}
-          >
-            {districtOptions.map((district) => (
-              <MenuItem key={district.id} value={district.id}>
-                {district.name}
-              </MenuItem>
-            ))}
-          </Select>
-          {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
-        </FormControl>
+        {showDistrict ? (
+          <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
+            <InputLabel id="action-district">District</InputLabel>
+            <Select
+              labelId="action-district"
+              label="District"
+              value={districtId}
+              onChange={(event) => form.setValue('districtId', event.target.value, { shouldValidate: true })}
+            >
+              {districtOptions.map((district) => (
+                <MenuItem key={district.id} value={district.id}>
+                  {district.name}
+                </MenuItem>
+              ))}
+            </Select>
+            {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
+          </FormControl>
+        ) : null}
         <TextField label="Title" required {...fieldState(form, 'title')} />
         <TextField label="Officer" {...fieldState(form, 'officerName')} />
         <TextField label="Location" {...fieldState(form, 'locationText')} />

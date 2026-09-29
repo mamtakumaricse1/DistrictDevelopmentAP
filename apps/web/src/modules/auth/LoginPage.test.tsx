@@ -1,43 +1,35 @@
-import { render, screen } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ThemeProvider } from '@mui/material/styles';
 import { describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { appTheme } from '../../app/theme';
 import { LoginPage } from './LoginPage';
 
+const loginWithPassword = vi.fn();
+
 vi.mock('../../auth/AuthProvider', () => ({
   useAuth: () => ({
-    login: vi.fn(),
+    loginWithPassword,
     error: null,
+    status: 'anonymous',
   }),
 }));
 
-vi.mock('../../services/api/auth', () => ({
-  fetchLoginOptions: async () => [
-    {
-      kind: 'district',
-      label: 'Changlang',
-      code: 'CHANGLANG',
-      issuer: 'http://localhost:8080/realms/changlang',
-      realm: 'changlang',
-      clientId: 'ddwmd-web',
-      districtId: '1',
-    },
-  ],
-}));
-
 describe('LoginPage', () => {
-  it('lists district realms from the API', async () => {
-    const client = new QueryClient();
+  it('asks for a username and password without naming a district', async () => {
+    loginWithPassword.mockResolvedValue(undefined);
     render(
-      <QueryClientProvider client={client}>
+      <MemoryRouter>
         <ThemeProvider theme={appTheme}>
           <LoginPage />
         </ThemeProvider>
-      </QueryClientProvider>,
+      </MemoryRouter>,
     );
-    expect(await screen.findByText('Changlang officers')).toBeInTheDocument();
-    expect(screen.getByText(/Realm changlang/)).toBeInTheDocument();
-    expect(screen.getByText('Citizen / public view')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'District Development Dashboard' })).toBeInTheDocument();
+    expect(screen.queryByText(/changlang/i)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'officer' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => expect(loginWithPassword).toHaveBeenCalledWith('officer', 'secret'));
   });
 });

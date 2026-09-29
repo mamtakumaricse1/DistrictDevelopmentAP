@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { UUID_LIKE } from '../../../lib/ids';
+import { choosesDistrict } from '../../../auth/districtScope';
 import { useAuth } from '../../../auth/AuthProvider';
 import { adminApi } from '../../../services/api/admin';
 import { districtName } from './labels';
@@ -28,6 +29,7 @@ export function LocationsPanel() {
   const locations = useQuery({ queryKey: ['admin', 'locations'], queryFn: () => adminApi.locations() });
   const [open, setOpen] = useState(false);
   const defaultDistrictId = profile?.isSuperAdmin ? '' : (profile?.districtIds[0] ?? '');
+  const showDistrict = choosesDistrict(profile);
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: { districtId: defaultDistrictId, type: 'VILLAGE' },
@@ -55,7 +57,7 @@ export function LocationsPanel() {
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>District</TableCell>
+            {showDistrict ? <TableCell>District</TableCell> : null}
             <TableCell>Type</TableCell>
             <TableCell>Name</TableCell>
             <TableCell align="right">Population</TableCell>
@@ -64,7 +66,7 @@ export function LocationsPanel() {
         <TableBody>
           {(locations.data ?? []).map((row) => (
             <TableRow key={row.id}>
-              <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell>
+              {showDistrict ? <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell> : null}
               <TableCell>{row.type}</TableCell>
               <TableCell>{row.name}</TableCell>
               <TableCell align="right">{row.population ?? '—'}</TableCell>
@@ -73,17 +75,19 @@ export function LocationsPanel() {
         </TableBody>
       </Table>
       <FormDialog title="Add location" open={open} onClose={() => setOpen(false)} error={create.error} onSubmit={form.handleSubmit((values) => create.mutate(values))}>
-        <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
-          <InputLabel id="loc-district">District</InputLabel>
-          <Select labelId="loc-district" label="District" value={form.watch('districtId')} onChange={(event) => form.setValue('districtId', event.target.value, { shouldValidate: true })}>
-            {(districts.data ?? []).map((district) => (
-              <MenuItem key={district.id} value={district.id}>
-                {district.name}
-              </MenuItem>
-            ))}
-          </Select>
-          {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
-        </FormControl>
+        {showDistrict ? (
+          <FormControl fullWidth error={Boolean(selectError(form, 'districtId'))}>
+            <InputLabel id="loc-district">District</InputLabel>
+            <Select labelId="loc-district" label="District" value={form.watch('districtId')} onChange={(event) => form.setValue('districtId', event.target.value, { shouldValidate: true })}>
+              {(districts.data ?? []).map((district) => (
+                <MenuItem key={district.id} value={district.id}>
+                  {district.name}
+                </MenuItem>
+              ))}
+            </Select>
+            {selectError(form, 'districtId') ? <FormHelperText>{selectError(form, 'districtId')}</FormHelperText> : null}
+          </FormControl>
+        ) : null}
         <TextField select label="Type" value={form.watch('type')} onChange={(event) => form.setValue('type', event.target.value as z.infer<typeof schema>['type'])}>
           <MenuItem value="BLOCK">Block</MenuItem>
           <MenuItem value="CIRCLE">Circle</MenuItem>

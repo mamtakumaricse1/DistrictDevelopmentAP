@@ -21,6 +21,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { projectCreateSchema, projectUpdateSchema } from '../../lib/validation';
+import { choosesDistrict } from '../../auth/districtScope';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusChip } from '../../components/StatusChip';
@@ -57,6 +58,7 @@ export function ProjectsPage() {
   const canCreate = hasPermission('project:create');
   const canUpdate = hasPermission('project:update');
   const canClose = hasPermission('project:delete');
+  const showDistrict = choosesDistrict(profile);
   const client = useQueryClient();
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
@@ -237,7 +239,7 @@ export function ProjectsPage() {
             <TableRow>
               <TableCell>Code</TableCell>
               <TableCell>Name</TableCell>
-              <TableCell>District</TableCell>
+              {showDistrict ? <TableCell>District</TableCell> : null}
               <TableCell>Department</TableCell>
               <TableCell>Year</TableCell>
               <TableCell>Status</TableCell>
@@ -250,7 +252,7 @@ export function ProjectsPage() {
               <TableRow key={row.id}>
                 <TableCell>{row.code}</TableCell>
                 <TableCell>{row.name}</TableCell>
-                <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell>
+                {showDistrict ? <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell> : null}
                 <TableCell>{departmentName(departments.data ?? [], row.departmentId)}</TableCell>
                 <TableCell>{row.financialYear}</TableCell>
                 <TableCell>
@@ -299,7 +301,8 @@ export function ProjectsPage() {
             {isDepartmentScoped ? null : <MenuItem value="">Select department</MenuItem>}
             {(departments.data ?? []).map((department) => (
               <MenuItem key={department.id} value={department.id} disabled={isDepartmentScoped && department.id !== profile?.departmentIds[0]}>
-                {districtName(districts.data ?? [], department.districtId)} — {department.name}
+                {showDistrict ? `${districtName(districts.data ?? [], department.districtId)} — ` : ''}
+                {department.name}
               </MenuItem>
             ))}
           </Select>
