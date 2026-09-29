@@ -54,6 +54,11 @@ export class CreateSchemeDto {
   @IsString()
   @MaxLength(40)
   targetUnit?: string;
+
+  @ApiPropertyOptional({ enum: KpiFrequency, description: 'Only the DC or an administrator may set this.' })
+  @IsOptional()
+  @IsEnum(KpiFrequency)
+  reportingFrequency?: KpiFrequency;
 }
 
 export class UpdateSchemeDto {

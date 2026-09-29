@@ -1,7 +1,8 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, ProjectStatus } from '../generated/prisma';
+import { KpiFrequency, Prisma, ProjectStatus } from '../generated/prisma';
 import { AuthzService, paginated, type AuthContext } from '@ddwmd/common';
 import { OrganizationCatalogClient } from '../auth/organization-catalog.client';
+import { acceptedReportingFrequency, assertCanSetReportingFrequency } from '../lib/reporting-frequency';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto, UpdateProjectDto } from './dto/project.dto';
 
@@ -135,6 +136,7 @@ export class ProjectsService {
           startDate: dto.startDate ? new Date(dto.startDate) : undefined,
           endDate: dto.endDate ? new Date(dto.endDate) : undefined,
           expectedCompletion: dto.expectedCompletion ? new Date(dto.expectedCompletion) : undefined,
+          reportingFrequency: acceptedReportingFrequency(this.authz, auth, dto.reportingFrequency),
           createdById: auth.userId,
           updatedById: auth.userId,
         },
@@ -196,6 +198,22 @@ export class ProjectsService {
     return this.serialize(updated);
   }
 
+  async setReportingFrequency(auth: AuthContext, id: string, frequency: KpiFrequency) {
+    assertCanSetReportingFrequency(this.authz, auth);
+    const current = await this.prisma.project.findUnique({ where: { id }, select: { id: true, districtId: true, departmentId: true } });
+    if (!current) {
+      throw new NotFoundException('Project not found.');
+    }
+    this.authz.assertDistrictAccess(auth, current.districtId);
+    this.authz.assertDepartmentAccess(auth, { id: current.departmentId, districtId: current.districtId });
+    const updated = await this.prisma.project.update({
+      where: { id },
+      data: { reportingFrequency: frequency, updatedById: auth.userId },
+      select: this.select(),
+    });
+    return this.serialize(updated);
+  }
+
   private serialize<T extends {
     sanctionedAmount: { toString(): string } | null;
     releasedAmount?: { toString(): string } | null;
@@ -236,6 +254,7 @@ export class ProjectsService {
       endDate: true,
       expectedCompletion: true,
       locationText: true,
+      reportingFrequency: true,
       isActive: true,
       createdAt: true,
       updatedAt: true,

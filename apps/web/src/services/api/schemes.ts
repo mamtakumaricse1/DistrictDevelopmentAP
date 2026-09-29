@@ -1,4 +1,5 @@
-import { apiGet, apiPost } from './client';
+import { apiGet, apiPatch, apiPost } from './client';
+import type { ReportingFrequency } from '../../lib/frequency';
 import type { SchemePerformance } from './dashboard';
 
 export type SchemeKpi = {
@@ -6,6 +7,7 @@ export type SchemeKpi = {
   name: string;
   unit: string;
   target: string | number;
+  frequency?: string;
 };
 
 export type SchemeDetail = SchemePerformance & {
@@ -28,6 +30,10 @@ export const schemesApi = {
         .join('&')}`,
     ),
   get: (id: string) => apiGet<SchemeDetail>(`/schemes/${id}`),
+  create: (body: unknown) => apiPost<SchemePerformance>('/schemes', body),
+  addKpi: (schemeId: string, body: unknown) => apiPost<SchemeKpi>(`/schemes/${schemeId}/kpis`, body),
+  setFrequency: (id: string, frequency: ReportingFrequency) =>
+    apiPatch<SchemePerformance>(`/schemes/${id}/frequency`, { frequency }),
   submitKpiProgress: (kpiId: string, body: unknown) => apiPost(`/schemes/kpis/${kpiId}/progress`, body),
   validateImport: (csv: string) => apiPost<{ valid: boolean; issues: string[]; rows: number }>('/imports/validate', { csv }),
   importProgress: (csv: string) => apiPost<{ imported: number }>('/imports/progress', { csv }),

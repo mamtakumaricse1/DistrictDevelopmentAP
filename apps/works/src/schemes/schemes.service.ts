@@ -1,8 +1,9 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, SchemeDomain } from '../generated/prisma';
+import { KpiFrequency, Prisma, SchemeDomain } from '../generated/prisma';
 import { AuthzService, type AuthContext } from '@ddwmd/common';
 import { OrganizationCatalogClient } from '../auth/organization-catalog.client';
 import { asNumber, ragStatus } from '../lib/rag';
+import { acceptedReportingFrequency, assertCanSetReportingFrequency } from '../lib/reporting-frequency';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateKpiDto, CreateSchemeDto, SubmitKpiProgressDto, UpdateSchemeDto } from './dto/scheme.dto';
 
@@ -73,6 +74,7 @@ export class SchemesService {
           remarks: dto.remarks?.trim(),
           targetValue: dto.targetValue === undefined ? undefined : new Prisma.Decimal(dto.targetValue),
           targetUnit: dto.targetUnit?.trim(),
+          reportingFrequency: acceptedReportingFrequency(this.authz, auth, dto.reportingFrequency),
           createdById: auth.userId,
           updatedById: auth.userId,
         },
@@ -117,6 +119,25 @@ export class SchemesService {
     return this.serializeScheme(updated);
   }
 
+  async setReportingFrequency(auth: AuthContext, id: string, frequency: KpiFrequency) {
+    assertCanSetReportingFrequency(this.authz, auth);
+    const current = await this.prisma.scheme.findUnique({ where: { id } });
+    if (!current) {
+      throw new NotFoundException('Scheme not found.');
+    }
+    this.authz.assertDistrictAccess(auth, current.districtId);
+    this.authz.assertDepartmentAccess(auth, { id: current.departmentId, districtId: current.districtId });
+    const [, updated] = await this.prisma.$transaction([
+      this.prisma.schemeKpi.updateMany({ where: { schemeId: id }, data: { frequency } }),
+      this.prisma.scheme.update({
+        where: { id },
+        data: { reportingFrequency: frequency, updatedById: auth.userId },
+        include: { kpis: { where: { isActive: true }, include: { progress: { orderBy: { periodYm: 'desc' }, take: 1 } } } },
+      }),
+    ]);
+    return this.serializeScheme(updated);
+  }
+
   async addKpi(auth: AuthContext, schemeId: string, dto: CreateKpiDto) {
     this.authz.assertPermission(auth, 'project:update');
     const scheme = await this.prisma.scheme.findUnique({ where: { id: schemeId } });
@@ -125,13 +146,14 @@ export class SchemesService {
     }
     this.authz.assertDistrictAccess(auth, scheme.districtId);
     this.authz.assertDepartmentAccess(auth, { id: scheme.departmentId, districtId: scheme.districtId });
+    const frequency = acceptedReportingFrequency(this.authz, auth, dto.frequency) ?? scheme.reportingFrequency;
     return this.prisma.schemeKpi.create({
       data: {
         schemeId,
         name: dto.name.trim(),
         unit: dto.unit.trim(),
         target: new Prisma.Decimal(dto.target),
-        frequency: dto.frequency,
+        frequency,
         greenThreshold: dto.greenThreshold === undefined ? undefined : new Prisma.Decimal(dto.greenThreshold),
         amberThreshold: dto.amberThreshold === undefined ? undefined : new Prisma.Decimal(dto.amberThreshold),
       },

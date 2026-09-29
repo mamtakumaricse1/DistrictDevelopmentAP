@@ -4,6 +4,7 @@ import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { CurrentUser, IsUuidLike, RequirePermissions, type AuthContext } from '@ddwmd/common';
 import { ProjectStatus } from '../generated/prisma';
+import { SetReportingFrequencyDto } from '../lib/reporting-frequency.dto';
 import { CreateProjectDto, UpdateProjectDto } from './dto/project.dto';
 import { ProjectsService } from './projects.service';
 
@@ -63,6 +64,17 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Get one project if the caller is in scope' })
   getById(@CurrentUser() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string) {
     return this.projects.getById(auth, id);
+  }
+
+  @Patch(':id/frequency')
+  @RequirePermissions('frequency:manage')
+  @ApiOperation({ summary: 'Set how often this project is reported' })
+  setFrequency(
+    @CurrentUser() auth: AuthContext,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: SetReportingFrequencyDto,
+  ) {
+    return this.projects.setReportingFrequency(auth, id, body.frequency);
   }
 
   @Patch(':id')

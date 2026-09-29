@@ -13,7 +13,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { IsUuidLike } from '@ddwmd/common';
-import { ProjectCategory, ProjectStatus, WorkType } from '../../generated/prisma';
+import { KpiFrequency, ProjectCategory, ProjectStatus, WorkType } from '../../generated/prisma';
 
 export class CreateProjectDto {
   @ApiProperty()
@@ -110,6 +110,11 @@ export class CreateProjectDto {
   @IsOptional()
   @IsDateString()
   expectedCompletion?: string;
+
+  @ApiPropertyOptional({ enum: KpiFrequency, description: 'Only the DC or an administrator may set this.' })
+  @IsOptional()
+  @IsEnum(KpiFrequency)
+  reportingFrequency?: KpiFrequency;
 }
 
 export class UpdateProjectDto {

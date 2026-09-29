@@ -78,6 +78,7 @@ model Scheme {
   remarks       String?
   targetValue   Decimal?      @map("target_value") @db.Decimal(14, 2)
   targetUnit    String?       @map("target_unit") @db.VarChar(40)
+  reportingFrequency KpiFrequency @default(MONTHLY) @map("reporting_frequency")
   isActive      Boolean       @default(true) @map("is_active")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
@@ -171,6 +172,7 @@ model Project {
   expectedCompletion   DateTime?          @map("expected_completion") @db.Date
   locationId           String?            @map("location_id") @db.Uuid
   locationText         String?            @map("location_text") @db.VarChar(300)
+  reportingFrequency   KpiFrequency       @default(MONTHLY) @map("reporting_frequency")
   isActive             Boolean            @default(true) @map("is_active")
   createdAt            DateTime           @default(now()) @map("created_at")
   updatedAt            DateTime           @updatedAt @map("updated_at")

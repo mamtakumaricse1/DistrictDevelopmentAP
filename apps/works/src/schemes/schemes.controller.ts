@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsEnum, IsOptional } from 'class-validator';
 import { CurrentUser, IsUuidLike, RequirePermissions, type AuthContext } from '@ddwmd/common';
 import { SchemeDomain } from '../generated/prisma';
+import { SetReportingFrequencyDto } from '../lib/reporting-frequency.dto';
 import { CreateKpiDto, CreateSchemeDto, SubmitKpiProgressDto, UpdateSchemeDto } from './dto/scheme.dto';
 import { SchemesService } from './schemes.service';
 
@@ -43,6 +44,17 @@ export class SchemesController {
   @RequirePermissions('project:read')
   getById(@CurrentUser() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string) {
     return this.schemes.getById(auth, id);
+  }
+
+  @Patch(':id/frequency')
+  @RequirePermissions('frequency:manage')
+  @ApiOperation({ summary: 'Set how often this scheme and its KPIs are reported' })
+  setFrequency(
+    @CurrentUser() auth: AuthContext,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: SetReportingFrequencyDto,
+  ) {
+    return this.schemes.setReportingFrequency(auth, id, body.frequency);
   }
 
   @Patch(':id')

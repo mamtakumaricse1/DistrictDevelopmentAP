@@ -7,6 +7,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { ProgressBar } from '../../components/ProgressBar';
 import { SectionHeading } from '../../components/SectionHeading';
 import { StatusChip } from '../../components/StatusChip';
+import { frequencyLabel } from '../../lib/frequency';
 import { formatNumber, formatPercent, formatRupees } from '../../lib/rag';
 import { adminApi } from '../../services/api/admin';
 import { dashboardApi } from '../../services/api/dashboard';
@@ -41,6 +42,7 @@ export function DepartmentDashboardPage() {
           <TableHead>
             <TableRow>
               <TableCell>Scheme</TableCell>
+              <TableCell>Frequency</TableCell>
               <TableCell align="right">Target</TableCell>
               <TableCell align="right">Achievement</TableCell>
               <TableCell align="right">Beneficiaries</TableCell>
@@ -52,6 +54,7 @@ export function DepartmentDashboardPage() {
             {(data.data?.schemes ?? []).map((row) => (
               <TableRow key={row.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/schemes/${row.id}`)}>
                 <TableCell>{row.name}</TableCell>
+                <TableCell>{frequencyLabel(row.reportingFrequency)}</TableCell>
                 <TableCell align="right">{formatNumber(row.target)}</TableCell>
                 <TableCell align="right">{formatNumber(row.achievement)}</TableCell>
                 <TableCell align="right">{formatNumber(row.achievement)}</TableCell>

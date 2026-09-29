@@ -1,3 +1,4 @@
+import type { ReportingFrequency } from '../../lib/frequency';
 import { apiDownload, apiGet, apiPatch, apiPost, apiUpload } from './client';
 
 export type ProjectStatus = 'DRAFT' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CLOSED';
@@ -17,6 +18,7 @@ export type ProjectRecord = {
   startDate: string | null;
   endDate: string | null;
   locationText: string | null;
+  reportingFrequency?: ReportingFrequency;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -86,6 +88,8 @@ export const projectsApi = {
   get: (id: string) => apiGet<ProjectRecord>(`/projects/${id}`),
   create: (body: unknown) => apiPost<ProjectRecord>('/projects', body),
   update: (id: string, body: unknown) => apiPatch<ProjectRecord>(`/projects/${id}`, body),
+  setFrequency: (id: string, frequency: ReportingFrequency) =>
+    apiPatch<ProjectRecord>(`/projects/${id}/frequency`, { frequency }),
   progress: (id: string) => apiGet<ProgressRecord[]>(`/projects/${id}/progress`),
   submitProgress: (id: string, body: unknown) => apiPost<ProgressRecord>(`/projects/${id}/progress`, body),
   documents: (id: string) => apiGet<DocumentRecord[]>(`/projects/${id}/documents`),

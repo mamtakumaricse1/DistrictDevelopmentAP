@@ -7,7 +7,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
+import { ReportingFrequencyControl } from '../../components/ReportingFrequencyControl';
 import { StatusChip } from '../../components/StatusChip';
+import type { ReportingFrequency } from '../../lib/frequency';
 import { progressSchema, validateUpload } from '../../lib/validation';
 import { projectsApi } from '../../services/api/projects';
 import { ErrorAlert, FormDialog, fieldState } from '../administration/panels/shared';
@@ -16,6 +18,7 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
+  const canSetFrequency = hasPermission('frequency:manage');
   const client = useQueryClient();
   const project = useQuery({ queryKey: ['project', id], queryFn: () => projectsApi.get(id!), enabled: Boolean(id) });
   const progress = useQuery({
@@ -51,6 +54,13 @@ export function ProjectDetailPage() {
     },
   });
 
+  const setFrequency = useMutation({
+    mutationFn: (frequency: ReportingFrequency) => projectsApi.setFrequency(id!, frequency),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ['project', id] });
+    },
+  });
+
   const upload = useMutation({
     mutationFn: (file: File) => projectsApi.uploadDocument(id!, file),
     onSuccess: async () => {
@@ -63,7 +73,13 @@ export function ProjectDetailPage() {
     <>
       <PageHeader title={project.data?.code ?? 'Project'} description={project.data?.name} />
       <Stack spacing={2}>
-        <ErrorAlert error={project.error ?? progress.error ?? documents.error ?? submit.error ?? upload.error} />
+        <ErrorAlert error={project.error ?? progress.error ?? documents.error ?? submit.error ?? upload.error ?? setFrequency.error} />
+        <ReportingFrequencyControl
+          value={project.data?.reportingFrequency}
+          canEdit={canSetFrequency}
+          pending={setFrequency.isPending}
+          onChange={(frequency) => setFrequency.mutate(frequency)}
+        />
         {uploadError ? <ErrorAlert error={new Error(uploadError)} /> : null}
         <Button sx={{ alignSelf: 'flex-start' }} onClick={() => navigate('/projects')}>
           Back to projects

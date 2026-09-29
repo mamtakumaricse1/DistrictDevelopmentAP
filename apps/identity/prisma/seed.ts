@@ -41,6 +41,7 @@ const PERMISSIONS: Array<{ code: string; name: string; module: string }> = [
   { code: 'report:export', name: 'Export reports', module: 'report' },
   { code: 'audit:read', name: 'Read audit logs', module: 'audit' },
   { code: 'notification:read', name: 'Read own notifications', module: 'notification' },
+  { code: 'frequency:manage', name: 'Set reporting frequency for schemes and projects', module: 'project' },
 ];
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -65,6 +66,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'report:export',
     'audit:read',
     'notification:read',
+    'frequency:manage',
   ],
   DEPARTMENT_USER: [
     'district:read',
@@ -111,6 +113,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'report:export',
     'audit:read',
     'notification:read',
+    'frequency:manage',
   ],
   BDO: [
     'district:read',

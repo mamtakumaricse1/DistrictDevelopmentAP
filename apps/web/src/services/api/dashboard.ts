@@ -55,6 +55,7 @@ export type SchemePerformance = {
   remarks?: string | null;
   targetUnit?: string | null;
   funding?: string;
+  reportingFrequency?: string;
   target: number;
   achievement: number;
   progress: number;

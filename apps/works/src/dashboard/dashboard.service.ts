@@ -231,6 +231,11 @@ export class DashboardService {
       }),
     ]);
     const delayed = latest.filter((row) => row.status === ProgressStatus.DELAYED || row.status === ProgressStatus.STALLED).length;
+    const roadIds = new Set(projects.filter((row) => row.category === ProjectCategory.ROAD).map((row) => row.id));
+    const roadPercents = latest.filter((row) => roadIds.has(row.project.id)).map((row) => asNumber(row.physicalPercent));
+    const roadProgress = roadPercents.length
+      ? Math.round(roadPercents.reduce((sum, value) => sum + value, 0) / roadPercents.length)
+      : 0;
     const domainProgress = new Map<string, number[]>();
     for (const row of beneficiaries) {
       const progress = asNumber(row.target) > 0 ? (asNumber(row.beneficiaries) / asNumber(row.target)) * 100 : 0;
@@ -254,7 +259,7 @@ export class DashboardService {
       sectors: [
         sector(SchemeDomain.HEALTH),
         sector(SchemeDomain.EDUCATION),
-        { domain: 'ROADS', progress: projects.filter((row) => row.category === ProjectCategory.ROAD).length ? 62 : 0, status: ragStatus(62) },
+        { domain: 'ROADS', progress: roadProgress, status: ragStatus(roadProgress) },
         sector(SchemeDomain.WATER),
         sector(SchemeDomain.HOUSING),
         sector(SchemeDomain.AGRICULTURE),
@@ -467,6 +472,7 @@ export class DashboardService {
     remarks?: string | null;
     targetUnit?: string | null;
     funding?: string;
+    reportingFrequency?: string;
     targetValue: { toString(): string } | null;
     domain: SchemeDomain;
     kpis: Array<{
@@ -498,6 +504,7 @@ export class DashboardService {
       remarks: scheme.remarks ?? null,
       targetUnit: scheme.targetUnit ?? null,
       funding: scheme.funding,
+      reportingFrequency: scheme.reportingFrequency ?? 'MONTHLY',
       target,
       achievement,
       progress,

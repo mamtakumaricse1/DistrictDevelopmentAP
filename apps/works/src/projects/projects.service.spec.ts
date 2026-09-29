@@ -131,6 +131,26 @@ describe('ProjectsService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('lets the DC set reporting frequency and refuses a department user', async () => {
+    const dc = districtAdmin();
+    dc.permissions = [...dc.permissions, 'frequency:manage'];
+    const prisma = {
+      project: {
+        findUnique: jest.fn().mockResolvedValue({ id: row().id, districtId: changlang, departmentId: changlangPwd }),
+        update: jest.fn().mockResolvedValue(row({ reportingFrequency: 'QUARTERLY' })),
+      },
+    };
+    const service = new ProjectsService(prisma as never, authz, {} as OrganizationCatalogClient);
+    await expect(service.setReportingFrequency(departmentUser(), row().id, 'QUARTERLY' as never)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    const updated = await service.setReportingFrequency(dc, row().id, 'QUARTERLY' as never);
+    expect(updated.reportingFrequency).toBe('QUARTERLY');
+    expect(prisma.project.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ reportingFrequency: 'QUARTERLY' }) }),
+    );
+  });
+
   it('requires project:delete to set CLOSED', async () => {
     const prisma = {
       project: { findUnique: jest.fn().mockResolvedValue(row()) },

@@ -8,6 +8,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusChip } from '../../components/StatusChip';
+import { ReportingFrequencyControl } from '../../components/ReportingFrequencyControl';
+import { frequencyLabel, type ReportingFrequency } from '../../lib/frequency';
 import { formatNumber, formatPercent, formatRupees } from '../../lib/rag';
 import { periodYmSchema } from '../../lib/validation';
 import { adminApi } from '../../services/api/admin';
@@ -22,18 +24,45 @@ const kpiFormSchema = z.object({
   achievement: z.coerce.number({ invalid_type_error: 'Enter the achievement.' }).min(0, 'Achievement must be 0 or more.'),
 });
 
+const newKpiSchema = z.object({
+  name: z.string().min(2, 'Enter a KPI name.').max(200),
+  unit: z.string().min(1, 'Enter a unit.').max(40),
+  target: z.coerce.number({ invalid_type_error: 'Enter a target.' }).min(0, 'Target must be 0 or more.'),
+});
+
 export function SchemeDetailPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
+  const canSetFrequency = hasPermission('frequency:manage');
+  const canUpdate = hasPermission('project:update');
   const client = useQueryClient();
   const scheme = useQuery({ queryKey: ['schemes', id], queryFn: () => schemesApi.get(id), enabled: Boolean(id) });
   const locations = useQuery({ queryKey: ['admin', 'locations'], queryFn: () => adminApi.locations() });
   const row = scheme.data;
   const [open, setOpen] = useState(false);
+  const [kpiOpen, setKpiOpen] = useState(false);
   const form = useForm<z.infer<typeof kpiFormSchema>>({
     resolver: zodResolver(kpiFormSchema),
     defaultValues: { kpiId: '', periodYm: '2026-09', target: 0, achievement: 0 },
+  });
+  const kpiForm = useForm<z.infer<typeof newKpiSchema>>({
+    resolver: zodResolver(newKpiSchema),
+    defaultValues: { name: '', unit: '', target: 0 },
+  });
+  const setFrequency = useMutation({
+    mutationFn: (frequency: ReportingFrequency) => schemesApi.setFrequency(id, frequency),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ['schemes'] });
+    },
+  });
+  const addKpi = useMutation({
+    mutationFn: (values: z.infer<typeof newKpiSchema>) => schemesApi.addKpi(id, values),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ['schemes', id] });
+      setKpiOpen(false);
+      kpiForm.reset({ name: '', unit: '', target: 0 });
+    },
   });
   const submit = useMutation({
     mutationFn: (values: z.infer<typeof kpiFormSchema>) => {
@@ -58,18 +87,56 @@ export function SchemeDetailPage() {
         description={`Target ${formatNumber(row?.target)} ${row?.targetUnit ?? ''} · Achievement ${formatNumber(row?.achievement)} · ${formatPercent(row?.progress)}`}
       />
       <Stack spacing={2}>
-        {row ? <StatusChip status={row.status} /> : null}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
+          {row ? <StatusChip status={row.status} /> : null}
+          <ReportingFrequencyControl
+            value={row?.reportingFrequency}
+            canEdit={canSetFrequency}
+            pending={setFrequency.isPending}
+            onChange={(frequency) => setFrequency.mutate(frequency)}
+          />
+        </Stack>
+        <ErrorAlert error={setFrequency.error} />
         <Typography variant="body2">
           Officer {row?.officerName ?? '—'} · Allocated {formatRupees(row?.fundAllocated)} · Released{' '}
           {formatRupees(row?.fundReleased)} · Expenditure {formatRupees(row?.expenditure)}
         </Typography>
         {row?.remarks ? <Typography variant="body2">{row.remarks}</Typography> : null}
         <ErrorAlert error={submit.error} />
-        {hasPermission('progress:submit') && (row?.kpis?.length ?? 0) > 0 ? (
-          <Button variant="contained" sx={{ alignSelf: 'flex-start' }} onClick={() => setOpen(true)}>
-            Submit KPI progress
-          </Button>
-        ) : null}
+        <Stack direction="row" spacing={1}>
+          {hasPermission('progress:submit') && (row?.kpis?.length ?? 0) > 0 ? (
+            <Button variant="contained" onClick={() => setOpen(true)}>
+              Submit KPI progress
+            </Button>
+          ) : null}
+          {canUpdate ? (
+            <Button variant="outlined" onClick={() => setKpiOpen(true)}>
+              Add KPI
+            </Button>
+          ) : null}
+        </Stack>
+        <Typography variant="h3">KPIs</Typography>
+        <Typography variant="body2">
+          KPIs on this scheme are reported {frequencyLabel(row?.reportingFrequency).toLowerCase()}. Changing the scheme frequency updates every KPI.
+        </Typography>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>KPI</TableCell>
+              <TableCell>Unit</TableCell>
+              <TableCell>Frequency</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {(row?.kpis ?? []).map((kpi) => (
+              <TableRow key={kpi.id}>
+                <TableCell>{kpi.name}</TableCell>
+                <TableCell>{kpi.unit}</TableCell>
+                <TableCell>{frequencyLabel(kpi.frequency ?? row?.reportingFrequency)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
         <Typography variant="h3">Block-wise</Typography>
         <Table size="small">
           <TableHead>
@@ -149,6 +216,18 @@ export function SchemeDetailPage() {
         <TextField label="Period YYYY-MM" required {...fieldState(form, 'periodYm')} />
         <TextField label="Target" type="number" required {...fieldState(form, 'target')} />
         <TextField label="Achievement" type="number" required {...fieldState(form, 'achievement')} />
+      </FormDialog>
+      <FormDialog
+        title="Add KPI"
+        open={kpiOpen}
+        onClose={() => setKpiOpen(false)}
+        error={addKpi.error}
+        onSubmit={kpiForm.handleSubmit((values) => addKpi.mutate(values))}
+      >
+        <TextField label="KPI name" required {...fieldState(kpiForm, 'name')} />
+        <TextField label="Unit" required placeholder="households, km, percent" {...fieldState(kpiForm, 'unit')} />
+        <TextField label="Target" type="number" required {...fieldState(kpiForm, 'target')} />
+        <Typography variant="body2">This KPI will be reported {frequencyLabel(row?.reportingFrequency).toLowerCase()}.</Typography>
       </FormDialog>
     </>
   );
