@@ -14,11 +14,14 @@ type DistrictMapProps = {
 export function DistrictMap({ locations, mapPoints = [], height = 320 }: DistrictMapProps) {
   const navigate = useNavigate();
   const placed = locations.filter((row) => row.latitude && row.longitude);
+  const byId = new Map(locations.map((row) => [row.id, row]));
+  const circles = placed.filter((row) => row.type === 'CIRCLE');
   const blocks = placed.filter((row) => row.type === 'BLOCK');
   const villages = placed.filter((row) => row.type === 'VILLAGE');
-  const center: [number, number] = blocks[0]
-    ? [Number(blocks[0].latitude), Number(blocks[0].longitude)]
-    : [27.14, 95.73];
+  const focus = circles.find((row) => row.name === 'Changlang') ?? circles[0] ?? blocks[0];
+  const center: [number, number] = focus
+    ? [Number(focus.latitude), Number(focus.longitude)]
+    : [27.178534, 95.751368];
   const counts = new Map(mapPoints.map((point) => [point.locationId, point]));
 
   return (
@@ -28,6 +31,35 @@ export function DistrictMap({ locations, mapPoints = [], height = 320 }: Distric
           attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        {circles.map((circle) => {
+          const point = counts.get(circle.id);
+          const parent = circle.parentId ? byId.get(circle.parentId) : undefined;
+          return (
+            <CircleMarker
+              key={circle.id}
+              center={[Number(circle.latitude), Number(circle.longitude)]}
+              radius={11}
+              pathOptions={{ color: '#0B2C4A', fillColor: '#1A4A73', fillOpacity: 0.85 }}
+              eventHandlers={{ click: () => navigate(`/blocks/${circle.id}`) }}
+            >
+              <Popup>
+                <Typography variant="subtitle2">{circle.name}</Typography>
+                <Typography variant="body2">{parent ? parent.name : 'Circle'}</Typography>
+                <Typography variant="body2">Villages {circle.villageCount ?? '—'}</Typography>
+                {point ? (
+                  <>
+                    <Typography variant="body2">{point.schemes} schemes</Typography>
+                    <Typography variant="body2">{point.roads} roads</Typography>
+                    <Typography variant="body2">{point.water} water projects</Typography>
+                    <Typography variant="body2">{point.schools} school</Typography>
+                    <Typography variant="body2">{point.health} health facility</Typography>
+                    <Typography variant="body2">{point.pmay} PMAY project</Typography>
+                  </>
+                ) : null}
+              </Popup>
+            </CircleMarker>
+          );
+        })}
         {blocks.map((block) => {
           const point = counts.get(block.id);
           return (

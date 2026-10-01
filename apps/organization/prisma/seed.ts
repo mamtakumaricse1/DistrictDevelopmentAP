@@ -1,4 +1,13 @@
-import { LocationType, PrismaClient } from '../src/generated/prisma';
+import { createHash } from 'node:crypto';
+import { LocationType, Prisma, PrismaClient } from '../src/generated/prisma';
+import {
+  CIRCLE_COORDINATES,
+  OFFICIAL_BLOCKS,
+  OFFICIAL_CIRCLES,
+  OFFICIAL_DEPARTMENTS,
+  RETIRED_SAMPLE_VILLAGE_IDS,
+  SUBDIVISIONS,
+} from './changlang-official-data';
 
 const prisma = new PrismaClient();
 
@@ -19,34 +28,10 @@ const CHANGLANG_DEPTS: Record<string, string> = {
   PWR: '33333333-3333-3333-3333-33333333333e',
 };
 
-const BLOCKS: Array<{
-  id: string;
-  code: string;
-  name: string;
-  population: number;
-  latitude: number;
-  longitude: number;
-}> = [
-  { id: '44444444-4444-4444-4444-000000000001', code: 'CHANGLANG', name: 'Changlang', population: 28000, latitude: 27.14, longitude: 95.734 },
-  { id: '44444444-4444-4444-4444-000000000002', code: 'MIAO', name: 'Miao', population: 22000, latitude: 27.2, longitude: 96.2 },
-  { id: '44444444-4444-4444-4444-000000000003', code: 'JAIRAMPUR', name: 'Jairampur', population: 18000, latitude: 27.3, longitude: 96.0 },
-  { id: '44444444-4444-4444-4444-000000000004', code: 'NAMPONG', name: 'Nampong', population: 12000, latitude: 27.28, longitude: 96.11 },
-  { id: '44444444-4444-4444-4444-000000000005', code: 'KHIMYANG', name: 'Khimyang', population: 14000, latitude: 27.05, longitude: 95.85 },
-  { id: '44444444-4444-4444-4444-000000000006', code: 'BORDUMSA', name: 'Bordumsa', population: 16000, latitude: 27.5, longitude: 95.9 },
-  { id: '44444444-4444-4444-4444-000000000007', code: 'DIYUN', name: 'Diyun', population: 15000, latitude: 27.55, longitude: 96.05 },
-  { id: '44444444-4444-4444-4444-000000000008', code: 'KHARSANG', name: 'Kharsang', population: 13226, latitude: 27.42, longitude: 96.05 },
-];
-
-const VILLAGES: Array<{ id: string; parentCode: string; code: string; name: string; population: number }> = [
-  { id: '44444444-4444-4444-4444-000000000101', parentCode: 'CHANGLANG', code: 'CHANGLANG_HQ', name: 'Changlang HQ', population: 9800 },
-  { id: '44444444-4444-4444-4444-000000000102', parentCode: 'CHANGLANG', code: 'RIMA', name: 'Rima', population: 2100 },
-  { id: '44444444-4444-4444-4444-000000000103', parentCode: 'MIAO', code: 'MIAO_TOWN', name: 'Miao', population: 7200 },
-  { id: '44444444-4444-4444-4444-000000000104', parentCode: 'MIAO', code: 'NAMPHAI', name: 'Namphai', population: 1800 },
-  { id: '44444444-4444-4444-4444-000000000105', parentCode: 'JAIRAMPUR', code: 'JAIRAMPUR_TOWN', name: 'Jairampur', population: 6100 },
-  { id: '44444444-4444-4444-4444-000000000106', parentCode: 'JAIRAMPUR', code: 'NONGTHEY', name: 'Nongthey', population: 1400 },
-  { id: '44444444-4444-4444-4444-000000000107', parentCode: 'NAMPONG', code: 'NAMPONG_TOWN', name: 'Nampong', population: 3200 },
-  { id: '44444444-4444-4444-4444-000000000108', parentCode: 'KHIMYANG', code: 'KHIMYANG_HQ', name: 'Khimyang', population: 2600 },
-];
+function stableLocationId(kind: string, code: string): string {
+  const hex = createHash('sha256').update(`changlang-location:${kind}:${code}`).digest('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
 
 function issuerFor(realm: string): string {
   const base = (process.env.KEYCLOAK_URL ?? 'http://localhost:8080').replace(/\/+$/, '');
@@ -88,6 +73,49 @@ async function upsertDistrict(input: {
   });
 }
 
+async function saveLocation(input: {
+  type: LocationType;
+  code: string;
+  name: string;
+  parentId?: string | null;
+  legacyId?: string;
+  villageCount?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+}) {
+  const data = {
+    type: input.type,
+    code: input.code,
+    name: input.name,
+    parentId: input.parentId ?? null,
+    villageCount: input.villageCount ?? null,
+    latitude:
+      input.latitude === undefined ? undefined : input.latitude === null ? null : new Prisma.Decimal(input.latitude),
+    longitude:
+      input.longitude === undefined ? undefined : input.longitude === null ? null : new Prisma.Decimal(input.longitude),
+    isActive: true,
+  };
+  if (input.legacyId) {
+    const byId = await prisma.location.findUnique({ where: { id: input.legacyId } });
+    if (byId) {
+      return prisma.location.update({ where: { id: input.legacyId }, data });
+    }
+  }
+  const existing = await prisma.location.findUnique({
+    where: { districtId_type_code: { districtId: CHANGLANG, type: input.type, code: input.code } },
+  });
+  if (existing) {
+    return prisma.location.update({ where: { id: existing.id }, data });
+  }
+  return prisma.location.create({
+    data: {
+      id: input.legacyId ?? stableLocationId(input.type, input.code),
+      districtId: CHANGLANG,
+      ...data,
+    },
+  });
+}
+
 async function main(): Promise<void> {
   const changlang = await upsertDistrict({
     id: CHANGLANG,
@@ -103,102 +131,89 @@ async function main(): Promise<void> {
   });
 
   const departmentDefs = [
-    { code: 'PWD', name: 'Public Works Department', shortName: 'PWD', hodName: 'EE PWD', hodContact: 'ee.pwd@changlang.gov.in' },
-    { code: 'RWD', name: 'Rural Works Department', shortName: 'RWD', hodName: 'EE RWD', hodContact: 'ee.rwd@changlang.gov.in' },
-    { code: 'PHED', name: 'Public Health Engineering', shortName: 'PHED', hodName: 'EE PHED', hodContact: 'ee.phed@changlang.gov.in' },
-    { code: 'EDU', name: 'Education', shortName: 'Education', hodName: 'DEO', hodContact: 'deo@changlang.gov.in' },
-    { code: 'HLT', name: 'Health', shortName: 'Health', hodName: 'DMO', hodContact: 'dmo@changlang.gov.in' },
-    { code: 'RD', name: 'Rural Development', shortName: 'RD', hodName: 'PD DRDA', hodContact: 'pd.drda@changlang.gov.in' },
-    { code: 'AGR', name: 'Agriculture', shortName: 'Agriculture', hodName: 'DAO', hodContact: 'dao@changlang.gov.in' },
-    { code: 'SW', name: 'Social Welfare', shortName: 'SW', hodName: 'CDPO', hodContact: 'cdpo@changlang.gov.in' },
-    { code: 'UD', name: 'Urban Development', shortName: 'UD', hodName: 'DUDA', hodContact: 'duda@changlang.gov.in' },
-    { code: 'FCS', name: 'Food & Civil Supply', shortName: 'FCS', hodName: 'DFCS', hodContact: 'dfcs@changlang.gov.in' },
-    { code: 'TRN', name: 'Transport', shortName: 'Transport', hodName: 'DTO', hodContact: 'dto@changlang.gov.in' },
-    { code: 'PWR', name: 'Power', shortName: 'Power', hodName: 'EE Power', hodContact: 'ee.power@changlang.gov.in' },
+    ...OFFICIAL_DEPARTMENTS,
+    { code: 'SW', name: 'Social Welfare', shortName: 'SW', hodName: 'CDPO' },
   ];
 
-  for (const district of [changlang]) {
-    for (const department of departmentDefs) {
-      const id = CHANGLANG_DEPTS[department.code];
-      const existing = await prisma.department.findUnique({
-        where: { districtId_code: { districtId: district.id, code: department.code } },
+  for (const department of departmentDefs) {
+    const id = CHANGLANG_DEPTS[department.code] ?? stableLocationId('DEPARTMENT', department.code);
+    const existing = await prisma.department.findUnique({
+      where: { districtId_code: { districtId: changlang.id, code: department.code } },
+    });
+    if (existing) {
+      await prisma.department.update({
+        where: { id: existing.id },
+        data: {
+          name: department.name,
+          shortName: department.shortName ?? null,
+          hodName: department.hodName ?? null,
+          isActive: true,
+        },
       });
-      if (existing) {
-        await prisma.department.update({
-          where: { id: existing.id },
-          data: {
-            name: department.name,
-            shortName: department.shortName,
-            hodName: department.hodName,
-            hodContact: department.hodContact,
-          },
-        });
-      } else {
-        await prisma.department.create({
-          data: { id, districtId: district.id, ...department },
-        });
-      }
+    } else {
+      await prisma.department.create({
+        data: {
+          id,
+          districtId: changlang.id,
+          code: department.code,
+          name: department.name,
+          shortName: department.shortName,
+          hodName: department.hodName,
+        },
+      });
     }
   }
 
-  for (const block of BLOCKS) {
-    await prisma.location.upsert({
-      where: {
-        districtId_type_code: { districtId: CHANGLANG, type: LocationType.BLOCK, code: block.code },
-      },
-      update: {
-        name: block.name,
-        population: block.population,
-        latitude: block.latitude,
-        longitude: block.longitude,
-        isActive: true,
-      },
-      create: {
-        id: block.id,
-        districtId: CHANGLANG,
-        type: LocationType.BLOCK,
-        code: block.code,
-        name: block.name,
-        population: block.population,
-        latitude: block.latitude,
-        longitude: block.longitude,
+  const subdivisionIds = new Map<string, string>();
+  for (const subdivision of SUBDIVISIONS) {
+    const saved = await saveLocation({
+      type: LocationType.SUB_DIVISION,
+      code: subdivision.code,
+      name: subdivision.name,
+    });
+    subdivisionIds.set(subdivision.code, saved.id);
+  }
+
+  const blockIds = new Map<string, string>();
+  for (const block of OFFICIAL_BLOCKS) {
+    const saved = await saveLocation({
+      type: LocationType.BLOCK,
+      code: block.code,
+      name: block.name,
+      parentId: subdivisionIds.get(block.subdivision) ?? null,
+      legacyId: block.legacyId,
+      latitude: null,
+      longitude: null,
+    });
+    blockIds.set(block.code, saved.id);
+  }
+
+  for (const circle of OFFICIAL_CIRCLES) {
+    const parentId = (circle.block ? blockIds.get(circle.block) : subdivisionIds.get(circle.subdivision)) ?? null;
+    await saveLocation({
+      type: LocationType.CIRCLE,
+      code: circle.code,
+      name: circle.name,
+      parentId,
+      legacyId: circle.legacyId,
+      villageCount: circle.villages,
+    });
+  }
+
+  for (const [name, coordinates] of Object.entries(CIRCLE_COORDINATES)) {
+    await prisma.location.updateMany({
+      where: { districtId: CHANGLANG, type: LocationType.CIRCLE, name },
+      data: {
+        latitude: new Prisma.Decimal(coordinates.latitude),
+        longitude: new Prisma.Decimal(coordinates.longitude),
       },
     });
   }
 
-  const blockByCode = new Map(BLOCKS.map((block) => [block.code, block]));
-  for (const [index, village] of VILLAGES.entries()) {
-    const parent = blockByCode.get(village.parentCode);
-    if (!parent) {
-      continue;
-    }
-    const latitude = parent.latitude + ((index % 2 === 0 ? 1 : -1) * 0.018);
-    const longitude = parent.longitude + 0.022;
-    await prisma.location.upsert({
-      where: {
-        districtId_type_code: { districtId: CHANGLANG, type: LocationType.VILLAGE, code: village.code },
-      },
-      update: {
-        name: village.name,
-        population: village.population,
-        parentId: parent.id,
-        latitude,
-        longitude,
-        isActive: true,
-      },
-      create: {
-        id: village.id,
-        districtId: CHANGLANG,
-        parentId: parent.id,
-        type: LocationType.VILLAGE,
-        code: village.code,
-        name: village.name,
-        population: village.population,
-        latitude,
-        longitude,
-      },
-    });
-  }
+  await prisma.location.updateMany({
+    where: { id: { in: RETIRED_SAMPLE_VILLAGE_IDS } },
+    data: { isActive: false, latitude: null, longitude: null },
+  });
 
   const masterCategories = [
     { code: 'DOCUMENT_CATEGORY', name: 'Document category' },

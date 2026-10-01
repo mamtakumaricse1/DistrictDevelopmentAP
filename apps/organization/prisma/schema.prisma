@@ -26,6 +26,7 @@ enum LocationType {
   CIRCLE
   GRAM_PANCHAYAT
   VILLAGE
+  SUB_DIVISION
 }
 
 model District {
@@ -84,6 +85,7 @@ model Location {
   code       String       @db.VarChar(64)
   name       String       @db.VarChar(200)
   population Int?
+  villageCount Int?     @map("village_count")
   latitude   Decimal?     @db.Decimal(9, 6)
   longitude  Decimal?     @db.Decimal(9, 6)
   isActive   Boolean      @default(true) @map("is_active")

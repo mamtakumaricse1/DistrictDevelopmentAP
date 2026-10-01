@@ -61,8 +61,9 @@ export class OrganizationReportsController {
       'district,block,circle,gramPanchayat,village,latitude,longitude',
       ...rows.map((row) => {
         const block = row.type === 'BLOCK' ? row.name : row.parent?.type === 'BLOCK' ? row.parent.name : '';
+        const circle = row.type === 'CIRCLE' ? row.name : '';
         const village = row.type === 'VILLAGE' ? row.name : '';
-        return [row.district.name, block, '', '', village, row.latitude?.toString() ?? '', row.longitude?.toString() ?? '']
+        return [row.district.name, block, circle, '', village, row.latitude?.toString() ?? '', row.longitude?.toString() ?? '']
           .map(csvCell)
           .join(',');
       }),

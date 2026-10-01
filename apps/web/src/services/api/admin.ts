@@ -29,10 +29,11 @@ export type LocationRecord = {
   id: string;
   districtId: string;
   parentId: string | null;
-  type: 'BLOCK' | 'CIRCLE' | 'GRAM_PANCHAYAT' | 'VILLAGE';
+  type: 'BLOCK' | 'CIRCLE' | 'GRAM_PANCHAYAT' | 'VILLAGE' | 'SUB_DIVISION';
   code: string;
   name: string;
   population: number | null;
+  villageCount?: number | null;
   latitude: string | number | null;
   longitude: string | number | null;
   isActive: boolean;

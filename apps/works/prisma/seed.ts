@@ -432,7 +432,7 @@ async function main(): Promise<void> {
     { schemeId: SCHEMES.SCHOOL, locationId: BLOCK_MIAO, target: 100, beneficiaries: 88 },
     { schemeId: SCHEMES.MGNREGA, locationId: BLOCK_NAMPONG, target: 10000, beneficiaries: 6100 },
     { schemeId: SCHEMES.NSAP, locationId: BLOCK_CHANGLANG, target: 1700, beneficiaries: 1580 },
-    { schemeId: SCHEMES.JJM, locationId: '44444444-4444-4444-4444-000000000106', target: 280, beneficiaries: 190 },
+    { schemeId: SCHEMES.JJM, locationId: BLOCK_JAIRAMPUR, target: 280, beneficiaries: 190 },
   ];
   for (const share of sectorShares) {
     await prisma.beneficiarySnapshot.upsert({
@@ -509,7 +509,7 @@ async function main(): Promise<void> {
     where: { code: 'CHANGLANG-PHED-2026-00001' },
     update: {
       name: 'JJM village water supply — Nongthey',
-      locationId: '44444444-4444-4444-4444-000000000106',
+      locationId: BLOCK_JAIRAMPUR,
       expectedCompletion: new Date('2026-08-23'),
       isActive: true,
     },
@@ -520,7 +520,7 @@ async function main(): Promise<void> {
       districtId: CHANGLANG,
       departmentId: PHED,
       schemeId: SCHEMES.JJM,
-      locationId: '44444444-4444-4444-4444-000000000106',
+      locationId: BLOCK_JAIRAMPUR,
       financialYear: 2026,
       status: ProjectStatus.ACTIVE,
       sanctionedAmount: 45000000,
@@ -536,7 +536,7 @@ async function main(): Promise<void> {
     update: {
       name: 'School building — Khimyang',
       expectedCompletion: new Date('2026-08-30'),
-      locationId: '44444444-4444-4444-4444-000000000108',
+      locationId: BLOCK_KHIMYANG,
       isActive: true,
     },
     create: {

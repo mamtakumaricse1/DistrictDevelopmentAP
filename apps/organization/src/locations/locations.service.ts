@@ -104,6 +104,7 @@ export class LocationsService {
       code: true,
       name: true,
       population: true,
+      villageCount: true,
       latitude: true,
       longitude: true,
       isActive: true,

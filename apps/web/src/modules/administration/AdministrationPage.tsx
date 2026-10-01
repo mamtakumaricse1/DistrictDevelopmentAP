@@ -1,6 +1,5 @@
 import { Paper, Tab, Tabs } from '@mui/material';
 import { useState } from 'react';
-import { choosesDistrict } from '../../auth/districtScope';
 import { useAuth } from '../../auth/AuthProvider';
 import { PageHeader } from '../../components/PageHeader';
 import { AgenciesPanel } from './panels/AgenciesPanel';

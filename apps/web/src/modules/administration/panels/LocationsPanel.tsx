@@ -14,7 +14,7 @@ import { ErrorAlert, FormDialog, fieldState, selectError } from './shared';
 const schema = z.object({
   districtId: z.string().regex(UUID_LIKE, 'Select a district.'),
   parentId: z.string().optional(),
-  type: z.enum(['BLOCK', 'CIRCLE', 'GRAM_PANCHAYAT', 'VILLAGE']),
+  type: z.enum(['SUB_DIVISION', 'BLOCK', 'CIRCLE', 'GRAM_PANCHAYAT', 'VILLAGE']),
   code: z.string().min(2).max(64),
   name: z.string().min(2).max(200),
   population: z.coerce.number().int().min(0).optional(),
@@ -60,16 +60,20 @@ export function LocationsPanel() {
             {showDistrict ? <TableCell>District</TableCell> : null}
             <TableCell>Type</TableCell>
             <TableCell>Name</TableCell>
-            <TableCell align="right">Population</TableCell>
+            <TableCell align="right">Villages</TableCell>
+            <TableCell align="right">Latitude</TableCell>
+            <TableCell align="right">Longitude</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {(locations.data ?? []).map((row) => (
             <TableRow key={row.id}>
               {showDistrict ? <TableCell>{districtName(districts.data ?? [], row.districtId)}</TableCell> : null}
-              <TableCell>{row.type}</TableCell>
+              <TableCell>{row.type.replaceAll('_', ' ')}</TableCell>
               <TableCell>{row.name}</TableCell>
-              <TableCell align="right">{row.population ?? '—'}</TableCell>
+              <TableCell align="right">{row.villageCount ?? '—'}</TableCell>
+              <TableCell align="right">{row.latitude ?? '—'}</TableCell>
+              <TableCell align="right">{row.longitude ?? '—'}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -89,6 +93,7 @@ export function LocationsPanel() {
           </FormControl>
         ) : null}
         <TextField select label="Type" value={form.watch('type')} onChange={(event) => form.setValue('type', event.target.value as z.infer<typeof schema>['type'])}>
+          <MenuItem value="SUB_DIVISION">Sub-division</MenuItem>
           <MenuItem value="BLOCK">Block</MenuItem>
           <MenuItem value="CIRCLE">Circle</MenuItem>
           <MenuItem value="GRAM_PANCHAYAT">Gram panchayat</MenuItem>
